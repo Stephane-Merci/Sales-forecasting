@@ -1,0 +1,114 @@
+{% extends 'base.html' %}
+
+{% block title %}Profile{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <div class="text-center mb-4">
+                        <div class="profile-image mb-3">
+                            <i class="fas fa-user-circle fa-5x text-primary"></i>
+                        </div>
+                        <h2 class="card-title">{{ user.username }}</h2>
+                        <p class="text-muted">{{ user.email }}</p>
+                    </div>
+
+                    <div class="profile-info">
+                        <form method="post" class="needs-validation" novalidate>
+                            {% csrf_token %}
+                            <div class="form-group mb-3">
+                                <label for="username">Username</label>
+                                <input type="text" class="form-control" id="username" name="username" value="{{ user.username }}" required>
+                            </div>
+                            <div class="form-group mb-3">
+                                <label for="email">Email</label>
+                                <input type="email" class="form-control" id="email" name="email" value="{{ user.email }}" required>
+                            </div>
+                            <div class="form-group mb-3">
+                                <label for="phone_number">Phone Number</label>
+                                <input type="tel" class="form-control" id="phone_number" name="phone_number" value="{{ user.phone_number }}">
+                            </div>
+                            <button type="submit" class="btn btn-primary">Update Profile</button>
+                        </form>
+                    </div>
+
+                    <hr class="my-4">
+
+                    <div class="change-password">
+                        <h4>Change Password</h4>
+                        <form method="post" action="{% url 'change_password' %}" class="needs-validation" novalidate>
+                            {% csrf_token %}
+                            <div class="form-group mb-3">
+                                <label for="current_password">Current Password</label>
+                                <input type="password" class="form-control" id="current_password" name="current_password" required>
+                            </div>
+                            <div class="form-group mb-3">
+                                <label for="new_password">New Password</label>
+                                <input type="password" class="form-control" id="new_password" name="new_password" required>
+                            </div>
+                            <div class="form-group mb-3">
+                                <label for="confirm_password">Confirm New Password</label>
+                                <input type="password" class="form-control" id="confirm_password" name="confirm_password" required>
+                            </div>
+                            <button type="submit" class="btn btn-warning">Change Password</button>
+                        </form>
+                    </div>
+
+                    <div class="account-status mt-4">
+                        <h4>Account Status</h4>
+                        <div class="d-flex align-items-center">
+                            <div class="status-indicator {% if user.is_verified %}bg-success{% else %}bg-warning{% endif %}"></div>
+                            <span class="ms-2">
+                                {% if user.is_verified %}
+                                    Email Verified
+                                {% else %}
+                                    Email Not Verified
+                                    <a href="{% url 'resend_verification' %}" class="btn btn-sm btn-outline-primary ms-2">Resend Verification</a>
+                                {% endif %}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.profile-image {
+    width: 100px;
+    height: 100px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.status-indicator {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    display: inline-block;
+}
+
+.profile-info, .change-password, .account-status {
+    animation: fadeIn 0.5s ease-in-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+</style>
+{% endblock %} 
