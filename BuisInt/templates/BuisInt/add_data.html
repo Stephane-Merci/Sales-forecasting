@@ -664,7 +664,10 @@ document.querySelector('.add-filter-btn').addEventListener('click', function() {
                     operatorSelect.appendChild(defaultOperatorOption);
 
                     // Add operators based on column type
-                    const columnType = document.querySelector(`.column-item[data-type]`).dataset.type;
+                    // Find the type of the selected column from availableColumns
+                    const selectedColInfo = availableColumns.find(col => col.name === selectedColumn);
+                    const columnType = selectedColInfo ? selectedColInfo.type : 'categorical'; // Default to categorical if type not found
+
                     let operators = [];
                     
                     if (columnType === 'numeric') {
