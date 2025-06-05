@@ -158,9 +158,10 @@ EMAIL_USE_TLS = True
 EMAIL_HOST_USER = 'merci.noupouwo@gmail.com'
 EMAIL_HOST_PASSWORD = 'xels nesm tplg jdux'
 DEFAULT_FROM_EMAIL = 'merci.noupouwo@gmail.com'
+SERVER_EMAIL = 'merci.noupouwo@gmail.com'
 
 # Frontend URLs for email verification and password reset
-FRONTEND_URL = 'http://localhost:3000'  # Change this to your frontend URL
+FRONTEND_URL = 'http://127.0.0.1:8000'  # Change this to your frontend URL
 VERIFY_EMAIL_URL = f'{FRONTEND_URL}/verify-email'
 RESET_PASSWORD_URL = f'{FRONTEND_URL}/reset-password'
 

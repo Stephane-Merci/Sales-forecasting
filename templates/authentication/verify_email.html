@@ -13,20 +13,22 @@
                     </div>
                     <h2 class="card-title mb-4">Verify Your Email</h2>
                     <p class="text-muted mb-4">
-                        We've sent a verification link to your email address. 
-                        Please check your inbox and click the link to verify your account.
+                        Click the button below to send a verification email to your address.
+                        Please check your inbox and click the link in the email to verify your account.
                     </p>
-                    <div class="verification-status mb-4">
-                        <div class="spinner-border text-primary" role="status">
-                            <span class="visually-hidden">Loading...</span>
-                        </div>
-                        <p class="mt-2">Waiting for verification...</p>
-                    </div>
-                    <div class="verification-actions">
-                        <a href="{% url 'resend_verification' %}" class="btn btn-outline-primary me-2">
-                            <i class="fas fa-redo"></i> Resend Email
+                    {% if messages %}
+                        {% for message in messages %}
+                            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                                {{ message }}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+                    <div class="verification-actions mt-4">
+                        <a href="{% url 'resend_verification' %}" class="btn btn-primary me-2">
+                            <i class="fas fa-paper-plane"></i> Send Verification Email
                         </a>
-                        <a href="{% url 'home' %}" class="btn btn-primary">
+                        <a href="{% url 'home' %}" class="btn btn-outline-secondary">
                             <i class="fas fa-home"></i> Back to Home
                         </a>
                     </div>
@@ -55,20 +57,13 @@
     }
 }
 
-.verification-status {
-    animation: pulse 2s infinite;
+.btn {
+    transition: all 0.3s ease;
 }
 
-@keyframes pulse {
-    0% {
-        opacity: 1;
-    }
-    50% {
-        opacity: 0.5;
-    }
-    100% {
-        opacity: 1;
-    }
+.btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
 }
 </style>
 {% endblock %} 

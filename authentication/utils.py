@@ -11,25 +11,25 @@ def send_verification_email(user):
     token = default_token_generator.make_token(user)
     uid = urlsafe_base64_encode(force_bytes(user.pk))
     
-    # Get the current site domain
-    current_site = Site.objects.get_current()
-    domain = current_site.domain
-    
     # Generate the email verification confirmation URL
-    # Use reverse to get the URL for the 'email_verification_confirm' view
     verification_path = reverse('email_verification_confirm', kwargs={'uidb64': uid, 'token': token})
-    verification_url = f'http://{domain}{verification_path}'
+    verification_url = f'{settings.FRONTEND_URL}{verification_path}'
     
     subject = 'Verify your email address'
     message = f'Please click the following link to verify your email: {verification_url}'
     
-    send_mail(
-        subject,
-        message,
-        settings.DEFAULT_FROM_EMAIL,
-        [user.email],
-        fail_silently=False,
-    )
+    try:
+        send_mail(
+            subject,
+            message,
+            settings.DEFAULT_FROM_EMAIL,
+            [user.email],
+            fail_silently=False,
+        )
+        print(f"Verification email sent to {user.email}")  # Debug print
+    except Exception as e:
+        print(f"Error sending verification email: {e}")  # Debug print
+        raise
 
 def send_password_reset_email(user):
     token = default_token_generator.make_token(user)
