@@ -30,6 +30,8 @@ class DataProcessingService:
                 else:
                     self.column_types[column] = 'categorical'
 
+            print(f"[DEBUG] Inferred column types: {self.column_types}")
+
             return {
                 'columns': list(self.data.columns),
                 'column_types': self.column_types,
@@ -131,22 +133,27 @@ class DataProcessingService:
         """
         Prepare data for visualization based on selected columns and filters
         """
+        print(f"[DEBUG] get_data_for_visualization called with: x_axis={x_axis}, y_axis={y_axis}, category={category}, filters={filters}")
+
         if self.data is None:
+            print("[DEBUG] No data loaded in get_data_for_visualization.")
             raise ValueError("No data loaded")
 
         # Apply filters if provided
         filtered_data = self.apply_filters(filters) if filters else self.data.copy()
+        print(f"[DEBUG] Data after applying filters:\n{filtered_data.head()}")
+        print(f"[DEBUG] Filtered data shape: {filtered_data.shape}")
 
-        # Group data if category is provided
-        if category:
-            grouped_data = filtered_data.groupby(category)[y_axis].agg(['mean', 'count']).reset_index()
-            return {
-                'x': grouped_data[category].tolist(),
-                'y': grouped_data['mean'].tolist(),
-                'counts': grouped_data['count'].tolist()
-            }
-        else:
-            return {
-                'x': filtered_data[x_axis].tolist(),
-                'y': filtered_data[y_axis].tolist()
-            } 
+        # --- Simplified data preparation for X and Y axes only ---
+        # Ensure selected columns exist after filtering
+        if x_axis not in filtered_data.columns or y_axis not in filtered_data.columns:
+             print(f"[DEBUG] X-axis ('{x_axis}') or Y-axis ('{y_axis}') column not found in filtered data.")
+             raise ValueError("Selected X or Y axis column not found after filtering.")
+
+        # Return data as lists for Chart.js
+        result = {
+            'x': filtered_data[x_axis].tolist(),
+            'y': filtered_data[y_axis].tolist()
+        }
+        print(f"[DEBUG] Returning data for visualization: {result}")
+        return result 
