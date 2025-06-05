@@ -102,7 +102,26 @@
 
         main {
             flex: 1;
-            padding-bottom: 2rem;
+            overflow-y: auto;
+        }
+
+        /* Ensure body and html are full height */
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
+
+        /* Adjust main content height considering fixed navbar/footer if necessary */
+        body {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .navbar ~ main {
+             /* This assumes the navbar is the immediate preceding sibling */
+             /* If the navbar is fixed, you might need padding-top on main or a wrapper */
+             /* For now, relying on flex: 1 to fill space */
         }
 
         /* Animations */
@@ -123,6 +142,58 @@
             .card {
                 margin: 1rem 0;
             }
+        }
+
+        html, body, .container-fluid.h-100, .row.h-100 {
+            height: 100%;
+            overflow: hidden; /* Prevent main scrollbar */
+        }
+
+        .border-right {
+            border-right: 1px solid #dee2e6;
+        }
+
+        .list-group-item i {
+            cursor: grab;
+        }
+
+        .card-header {
+            padding: 0.5rem 0.75rem;
+            margin-bottom: 0;
+            background-color: rgba(0, 0, 0, .03);
+            border-bottom: 1px solid rgba(0, 0, 0, .125);
+        }
+
+        .card-body.p-2 {
+            min-height: 50px; /* Ensure drag/drop areas have space */
+        }
+
+        .nav-tabs .nav-link.active {
+            font-weight: bold;
+        }
+
+        /* Style for the visualization area placeholder */
+        #visualization-area {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100%; /* Occupy remaining height */
+            font-size: 1.2em;
+        }
+
+        /* Adjust list item background for better contrast against light background */
+        .list-group-item.bg-light {
+            background-color: #f8f9fa !important;
+        }
+
+        .row.no-gutters {
+            margin-left: 0;
+            margin-right: 0;
+        }
+
+        .row.no-gutters > [class*="col-"] {
+            padding-left: 0;
+            padding-right: 0;
         }
     </style>
     {% block extra_css %}{% endblock %}
@@ -166,7 +237,7 @@
         </div>
     </nav>
 
-    <main class="container py-4 fade-in">
+    <main class="{% block main_classes %}container py-4 fade-in{% endblock main_classes %}">
         {% block content %}{% endblock %}
     </main>
 

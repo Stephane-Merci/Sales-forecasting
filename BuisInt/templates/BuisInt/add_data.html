@@ -1,0 +1,614 @@
+{% extends 'base.html' %}
+
+{% block title %}Data Analysis{% endblock %}
+
+{% block main_classes %}
+container-fluid h-100 px-0 py-0
+{% endblock %}
+
+{% block content %}
+<div class="row h-100 no-gutters debug-border" style="height: 100%; margin: 0 !important;"> {# no-gutters to remove column padding #}
+    <!-- Left Sidebar: Columns, Chart Settings, and Filters -->
+    <div class="col-md-4 col-lg-3 bg-light border-right h-100 overflow-auto main-content-col"> {# Increased left sidebar width, added custom class #}
+        <h5 class="mt-3 mb-3 px-3">Sales_Data_New</h5> {# Added horizontal padding #}
+
+        <!-- Data Input/Upload Section -->
+        <div class="px-3 py-3 mb-4 border rounded bg-white shadow-sm"> {# Added padding, border, rounded corners, background, and shadow #}
+            <h6>Upload Data</h6>
+            <div class="input-group">
+                <input type="file" class="form-control" id="data-upload-input" accept=".csv"> {# Added ID, accept attribute, limiting to CSV for simple parsing #}
+                <label class="input-group-text" for="data-upload-input">Choose CSV File</label> {# Updated label #}
+            </div>
+             <small class="form-text text-muted">Supported format: CSV</small> {# Updated supported format #}
+        </div>
+
+        <div class="row no-gutters px-3 mb-3"> {# Row for horizontal layout within sidebar, added bottom margin #}
+            <!-- Data Columns List -->
+            <div class="col-6 pe-2"> {# Takes half width, added right padding #}
+                <h6>Columns</h6>
+                <ul id="columns-list" class="list-group list-group-flush border rounded bg-white shadow-sm p-2"> {# Added border, rounded, background, shadow, padding #}
+                    {# This list should be populated dynamically by JavaScript after data upload #}
+                </ul>
+                 {# Add a message when no columns are loaded #}
+                 <p id="no-columns-message" class="text-muted mt-2 px-2 text-center">Upload data to see columns.</p>
+            </div>
+
+            <!-- Chart Settings / Column Mapping -->
+            <div class="col-6 ps-2"> {# Takes other half width, added left padding #}
+                <h6>Chart Settings</h6>
+                <div id="xaxis-dropzone" class="card mb-2 border rounded bg-white shadow-sm dropzone"> {# Added border, rounded, background, shadow #}
+                    <div class="card-header">X Axis</div>
+                    <div class="card-body p-2 text-muted text-center">
+                        Drop here or click above
+                        {# Area where dragged column names would appear #}
+                    </div>
+                </div>
+                 <div id="yaxis-dropzone" class="card mb-2 border rounded bg-white shadow-sm dropzone"> {# Added border, rounded, background, shadow #}
+                    <div class="card-header">Y Axis</div>
+                    <div class="card-body p-2 text-muted text-center">
+                        Drop here or click above
+                        {# Area where dragged column names would appear #}
+                    </div>
+                </div>
+                <div id="category-dropzone" class="card mb-2 border rounded bg-white shadow-sm dropzone"> {# Added border, rounded, background, shadow #}
+                    <div class="card-header">Category</div>
+                    <div class="card-body p-2 text-muted text-center">
+                        Drop here or click above
+                        {# Area where dragged column names would appear #}
+                    </div>
+                </div>
+                {# Add more settings like Break-Out, Row Limit, Sort, etc. as needed #}
+            </div>
+        </div> {# End row for horizontal layout #}
+
+        <!-- Filters Section -->
+         <div class="mb-4 px-3"> {# Added horizontal padding #}
+            <h6>Filters</h6>
+             <div id="filters-area" class="card mb-2 border rounded bg-white shadow-sm"> {# Added ID, border, rounded, background, shadow #}
+                <div class="card-body p-2 text-muted">
+                    <p class="text-center add-filter-btn">+ Add Filter</p> {# Made text clickable #}
+                    {# Area for dynamically added filters #}
+                    <div id="dynamic-filters-container"></div> {# Container for filters #}
+                </div>
+            </div>
+         </div>
+
+         {# Placeholder for other potential controls related to uploaded data #}
+
+    </div>
+
+    <!-- Right Content: Visualizations and Data View -->
+    <div class="col-md-8 col-lg-9 h-100 d-flex flex-column main-content-col"> {# Adjusted width and added flex for content, added custom class #}
+        <div class="d-flex justify-content-between align-items-center py-3 px-3 border-bottom"> {# Added padding and border #}
+            <div>
+                <button class="btn btn-outline-secondary me-2"><i class="fas fa-chart-bar"></i> Visualizations</button>
+                <button class="btn btn-outline-secondary"><i class="fas fa-table"></i> Data View</button>
+                 {# Buttons for Build, Format tabs #}
+            </div>
+            <div>
+                {# Actions like Download, Run #}
+                <button id="run-button" class="btn btn-primary me-2"><i class="fas fa-play"></i> Run</button>
+                <button class="btn btn-secondary me-2"><i class="fas fa-download"></i> Download</button>
+                {# More action buttons like View, Add to Dashboard #}
+            </div>
+        </div>
+
+        <!-- Visualization/Data Area -->
+        <div class="flex-grow-1 overflow-auto p-3"> {# flex-grow-1 to fill space, added padding #}
+            {# This is where the chart or data table will be rendered by JavaScript #}
+            <div id="visualization-area" class="text-center text-muted mt-5">
+                Upload data and configure settings to view visualizations or data table.
+            </div>
+        </div>
+
+         <!-- Show Query / Jobs Area (Optional) -->
+        <div class="border-top mt-auto p-2"> {# mt-auto to push to bottom #}
+             <ul class="nav nav-tabs" id="myTab" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="query-tab" data-bs-toggle="tab" data-bs-target="#query" type="button" role="tab" aria-controls="query" aria-selected="true">Show Query</button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="jobs-tab" data-bs-toggle="tab" data-bs-target="#jobs" type="button" role="tab" aria-controls="jobs" aria-selected="false">Jobs</button>
+                </li>
+             </ul>
+             <div class="tab-content" id="myTabContent">
+                <div class="tab-pane fade show active" id="query" role="tabpanel" aria-labelledby="query-tab">
+                    {# Display generated query here #}
+                     <p class="mt-2 text-muted">Query will appear here after running.</p>
+                </div>
+                <div class="tab-pane fade" id="jobs" role="tabpanel" aria-labelledby="jobs-tab">
+                     {# Display job status here #}
+                     <p class="mt-2 text-muted">Job status will appear here.</p>
+                </div>
+             </div>
+        </div>
+
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+{{ block.super }}
+<style>
+/* Add custom styles here */
+html, body, .container-fluid.h-100, .row.h-100 {
+    height: 100%;
+    overflow: hidden; /* Prevent main scrollbar */
+}
+
+.border-right {
+    border-right: 1px solid #dee2e6;
+}
+
+.list-group-item i {
+    cursor: grab;
+}
+
+.card-header {
+    padding: 0.5rem 0.75rem;
+    margin-bottom: 0;
+    background-color: rgba(0, 0, 0, .03);
+    border-bottom: 1px solid rgba(0, 0, 0, .125);
+}
+
+.card-body.p-2 {
+    min-height: 50px; /* Ensure drag/drop areas have space */
+}
+
+.nav-tabs .nav-link.active {
+    font-weight: bold;
+}
+
+/* Style for the visualization area placeholder */
+#visualization-area {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%; /* Occupy remaining height */
+    font-size: 1.2em;
+}
+
+/* Adjust list item background for better contrast against light background */
+.list-group-item.bg-light {
+    background-color: #f8f9fa !important;
+}
+
+.row.no-gutters {
+    margin-left: 0;
+    margin-right: 0;
+}
+
+.row.no-gutters > [class*="col-"] {
+    padding-left: 0;
+    padding-right: 0;
+}
+
+/* Ensure main container has no padding */
+main.container-fluid.h-100.px-0.py-0 {
+    padding: 0 !important;
+    margin: 0 !important;
+}
+
+/* Remove padding from the main grid columns */
+.main-content-col {
+    padding: 0 !important;
+}
+
+/* Ensure the row inside main stretches full height */
+main.container-fluid.h-100.px-0.py-0 > .row.h-100.no-gutters {
+    height: 100%;
+    margin: 0 !important; /* Ensure no margin */
+}
+
+/* Style for dropzone areas */
+.dropzone {
+    border: 2px dashed #ced4da;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+.dropzone .card-body {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 80px; /* Increased min-height for drop area */
+}
+
+/* Style for draggable columns */
+.column-item {
+    cursor: grab;
+}
+
+/* Style for the add filter button */
+.add-filter-btn {
+    cursor: pointer;
+    color: #0d6efd; /* Bootstrap primary color */
+    text-decoration: none; /* Remove underline */
+}
+
+.add-filter-btn:hover {
+    text-decoration: underline; /* Add underline on hover */
+}
+
+</style>
+{% endblock %}
+
+{% block extra_js %}
+{{ block.super }}
+<script>
+// This is where you would add JavaScript for:
+// - Building chart configurations based on selected columns and filter criteria
+// - Making API calls to send data and configuration to the backend for processing/querying
+// - Receiving processed data from the backend
+// - Rendering charts using a charting library (e.g., Chart.js, Plotly.js, D3.js) in the visualization-area div
+// - Switching between Visualization and Data View tabs
+// - Handling Run and Download button clicks (Triggering data processing/download)
+// - Displaying generated queries or job status (if applicable)
+
+let availableColumns = []; // Variable to store parsed column headers
+let activeFilters = []; // Array to store the configured filters
+
+// Function to update the activeFilters array from the UI
+function updateActiveFilters() {
+    activeFilters = []; // Clear the array
+    const filterRows = document.querySelectorAll('.filter-row');
+    filterRows.forEach(row => {
+        const columnSelect = row.querySelector('.filter-column-select');
+        const operatorSelect = row.querySelector('.filter-operator-select');
+        const valueInput = row.querySelector('.filter-value-input');
+
+        const column = columnSelect.value;
+        const operator = operatorSelect.value;
+        const value = valueInput.value;
+
+        // Only add filters that have at least a column selected
+        if (column) {
+            activeFilters.push({
+                column: column,
+                operator: operator,
+                value: value
+            });
+        }
+    });
+    console.log('Active Filters:', activeFilters); // Log the current filters (for debugging)
+}
+
+
+// *** File Upload Handling ***
+document.getElementById('data-upload-input').addEventListener('change', function(event) {
+    const file = event.target.files[0];
+    if (file) {
+        console.log('File selected:', file.name);
+
+        const formData = new FormData();
+        formData.append('file', file);
+
+        // Send file to backend for processing
+        fetch('/business/api/upload-data/', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(result => {
+            if (result.status === 'success') {
+                console.log('Data loaded successfully:', result.data);
+                
+                // Store column information
+                availableColumns = result.data.columns;
+                const columnTypes = result.data.column_types;
+
+                // Update columns list
+                const columnsList = document.getElementById('columns-list');
+                const noColumnsMessage = document.getElementById('no-columns-message');
+
+                columnsList.innerHTML = ''; // Clear existing columns
+
+                availableColumns.forEach(header => {
+                    const li = document.createElement('li');
+                    li.className = 'list-group-item d-flex justify-content-between align-items-center bg-light column-item';
+                    li.setAttribute('draggable', true);
+                    li.dataset.type = columnTypes[header]; // Store column type for later use
+                    li.innerHTML = `
+                        ${header}
+                        <i class="fas fa-grip-vertical text-muted"></i>
+                    `;
+                    columnsList.appendChild(li);
+                });
+
+                if (availableColumns.length > 0) {
+                    noColumnsMessage.style.display = 'none';
+                    document.querySelector('.add-filter-btn').style.pointerEvents = 'auto';
+                    document.querySelector('.add-filter-btn').style.opacity = '1';
+                } else {
+                    noColumnsMessage.style.display = 'block';
+                    noColumnsMessage.textContent = 'No columns found in file.';
+                    document.querySelector('.add-filter-btn').style.pointerEvents = 'none';
+                    document.querySelector('.add-filter-btn').style.opacity = '0.5';
+                }
+
+                enableDragAndDrop();
+            } else {
+                console.error('Error loading data:', result.message);
+                alert('Error loading data: ' + result.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error uploading file: ' + error.message);
+        });
+    }
+});
+
+// Function to get column statistics
+function getColumnStats(column) {
+    return fetch('/business/api/column-stats/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ column: column })
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.status === 'success') {
+            return result.data;
+        } else {
+            throw new Error(result.message);
+        }
+    });
+}
+
+// Function to get visualization data
+function getVisualizationData(xAxis, yAxis, category = null, filters = []) {
+    return fetch('/business/api/visualization-data/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            x_axis: xAxis,
+            y_axis: yAxis,
+            category: category,
+            filters: filters
+        })
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.status === 'success') {
+            return result.data;
+        } else {
+            throw new Error(result.message);
+        }
+    });
+}
+
+// Function to apply filters
+function applyFilters(filters) {
+    return fetch('/business/api/apply-filters/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ filters: filters })
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.status === 'success') {
+            return result.data;
+        } else {
+            throw new Error(result.message);
+        }
+    });
+}
+
+// *** Drag and Drop Functionality ***
+function enableDragAndDrop() {
+    const columnItems = document.querySelectorAll('.column-item');
+    const dropzones = document.querySelectorAll('.dropzone');
+
+    columnItems.forEach(item => {
+        item.addEventListener('dragstart', (event) => {
+            event.dataTransfer.setData('text/plain', event.target.textContent.trim());
+            console.log('Dragging:', event.target.textContent.trim());
+        });
+    });
+
+    dropzones.forEach(dropzone => {
+        dropzone.addEventListener('dragover', (event) => {
+            event.preventDefault();
+            dropzone.classList.add('drag-over');
+        });
+
+        dropzone.addEventListener('dragleave', (event) => {
+            dropzone.classList.remove('drag-over');
+        });
+
+        dropzone.addEventListener('drop', (event) => {
+            event.preventDefault();
+            dropzone.classList.remove('drag-over');
+
+            const columnName = event.dataTransfer.getData('text/plain');
+            console.log('Dropped:', columnName, 'on', dropzone.id);
+
+            const cardBody = dropzone.querySelector('.card-body');
+            if (cardBody) {
+                cardBody.textContent = columnName;
+                dropzone.dataset.column = columnName;
+            }
+
+             // --- Next Steps ---
+             // 1. Update chart configuration based on the dropped column
+             // 2. Potentially update the UI to show the selected column clearly
+        });
+    });
+
+     // Optional: Add styling for drag-over state
+     const style = document.createElement('style');
+     style.innerHTML = `
+         .dropzone.drag-over {
+             background-color: #e9ecef; /* Light gray background */
+             border-color: #0d6efd; /* Primary color border */
+         }
+     `;
+     document.head.appendChild(style);
+}
+
+// Update the filter functionality to use the backend API
+document.querySelector('.add-filter-btn').addEventListener('click', function() {
+    const filtersContainer = document.getElementById('dynamic-filters-container');
+
+    // Create a new filter row element
+    const filterRow = document.createElement('div');
+    filterRow.className = 'filter-row mb-2';
+
+    // Basic structure for a filter
+    filterRow.innerHTML = `
+        <div class="input-group">
+            <select class="form-select form-select-sm filter-column-select">
+                 <option value="" selected disabled>Select Column</option>
+            </select>
+
+            <select class="form-select form-select-sm filter-operator-select" disabled>
+                 <option value="" selected disabled>Operator</option>
+            </select>
+
+            <input type="text" class="form-control form-control-sm filter-value-input" placeholder="Value" disabled>
+
+            <button class="btn btn-outline-danger btn-sm remove-filter-btn" type="button">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+    `;
+
+    filtersContainer.appendChild(filterRow);
+
+    // Populate the column select dropdown
+    const columnSelect = filterRow.querySelector('.filter-column-select');
+    availableColumns.forEach(column => {
+        const option = document.createElement('option');
+        option.value = column;
+        option.textContent = column;
+        columnSelect.appendChild(option);
+    });
+
+    // Enable operator and value inputs when a column is selected
+    columnSelect.addEventListener('change', function() {
+        const selectedColumn = this.value;
+        const operatorSelect = filterRow.querySelector('.filter-operator-select');
+        const valueInput = filterRow.querySelector('.filter-value-input');
+
+        if (selectedColumn) {
+            // Get column statistics to determine appropriate operators
+            getColumnStats(selectedColumn)
+                .then(stats => {
+                    // Clear existing operator options
+                    operatorSelect.innerHTML = '';
+                    const defaultOperatorOption = document.createElement('option');
+                    defaultOperatorOption.value = "";
+                    defaultOperatorOption.textContent = "Select Operator";
+                    defaultOperatorOption.selected = true;
+                    defaultOperatorOption.disabled = true;
+                    operatorSelect.appendChild(defaultOperatorOption);
+
+                    // Add operators based on column type
+                    const columnType = document.querySelector(`.column-item[data-type]`).dataset.type;
+                    let operators = [];
+                    
+                    if (columnType === 'numeric') {
+                        operators = ['==', '!=', '>', '<', '>=', '<=', 'between'];
+                    } else if (columnType === 'datetime') {
+                        operators = ['==', '!=', '>', '<', '>=', '<=', 'between'];
+                    } else {  // categorical
+                        operators = ['==', '!=', 'contains', 'starts with', 'ends with'];
+                    }
+
+                    operators.forEach(operator => {
+                        const option = document.createElement('option');
+                        option.value = operator;
+                        option.textContent = operator;
+                        operatorSelect.appendChild(option);
+                    });
+
+                    operatorSelect.disabled = false;
+                    valueInput.disabled = false;
+                })
+                .catch(error => {
+                    console.error('Error getting column stats:', error);
+                    alert('Error getting column statistics: ' + error.message);
+                });
+        } else {
+            operatorSelect.disabled = true;
+            valueInput.disabled = true;
+            operatorSelect.value = '';
+            valueInput.value = '';
+        }
+        updateActiveFilters();
+    });
+
+    // Add event listener to the remove button
+    filterRow.querySelector('.remove-filter-btn').addEventListener('click', function() {
+        filterRow.remove();
+        updateActiveFilters();
+    });
+
+    // Add event listeners to operator and value inputs
+    filterRow.querySelector('.filter-operator-select').addEventListener('change', updateActiveFilters);
+    filterRow.querySelector('.filter-value-input').addEventListener('input', updateActiveFilters);
+
+    // Update filters immediately after adding a new filter row
+    updateActiveFilters();
+});
+
+// Update the Run button click handler
+document.getElementById('run-button').addEventListener('click', function() {
+    const xAxisDropzone = document.getElementById('xaxis-dropzone');
+    const yAxisDropzone = document.getElementById('yaxis-dropzone');
+    const categoryDropzone = document.getElementById('category-dropzone');
+
+    const xAxis = xAxisDropzone.dataset.column;
+    const yAxis = yAxisDropzone.dataset.column;
+    const category = categoryDropzone.dataset.column;
+
+    if (!xAxis || !yAxis) {
+        alert('Please select both X-axis and Y-axis columns');
+        return;
+    }
+
+    // Get visualization data from backend
+    getVisualizationData(xAxis, yAxis, category, activeFilters)
+        .then(data => {
+            // Update visualization area with the data
+            const visualizationArea = document.getElementById('visualization-area');
+            visualizationArea.innerHTML = `
+                <div class="alert alert-info">
+                    Data ready for visualization:<br>
+                    X-axis: ${xAxis}<br>
+                    Y-axis: ${yAxis}<br>
+                    ${category ? `Category: ${category}<br>` : ''}
+                    Number of data points: ${data.x.length}
+                </div>
+            `;
+            // TODO: Implement actual chart rendering using a charting library
+        })
+        .catch(error => {
+            console.error('Error getting visualization data:', error);
+            alert('Error getting visualization data: ' + error.message);
+        });
+});
+
+// Basic Bootstrap form validation (can be removed if not using a form on this page)
+(function () {
+    'use strict'
+    var forms = document.querySelectorAll('.needs-validation')
+    Array.prototype.slice.call(forms).forEach(function (form) {
+        form.addEventListener('submit', function (event) {
+            if (!form.checkValidity()) {
+                event.preventDefault()
+                event.stopPropagation()
+            }
+            form.classList.add('was-validated')
+        }, false)
+    })
+})()
+</script>
+{% endblock %} 
