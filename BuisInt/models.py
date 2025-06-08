@@ -1,5 +1,8 @@
 from django.db import models
 from django.contrib.auth import get_user_model
+from django.contrib.auth.models import User
+from mongoengine import Document, StringField, ReferenceField, DateTimeField, ListField, DictField, IntField
+from datetime import datetime
 
 User = get_user_model()
 
@@ -26,3 +29,21 @@ class BusinessData(models.Model):
         if not self.profit:
             self.profit = self.revenue - self.expenses
         super().save(*args, **kwargs)
+
+class UserFile(Document):
+    user_id = IntField(required=True)  # Store Django user ID instead of reference
+    username = StringField(required=True)  # Store username for display purposes
+    filename = StringField(required=True)
+    file_content = StringField(required=True)  # Store CSV content as string
+    column_types = DictField()  # Store column types
+    upload_date = DateTimeField(default=datetime.utcnow)
+    description = StringField(max_length=500)
+    
+    meta = {
+        'collection': 'user_files',
+        'indexes': [
+            'user_id',
+            'filename',
+            'upload_date'
+        ]
+    }

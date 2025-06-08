@@ -41,6 +41,8 @@ INSTALLED_APPS = [
     'rest_framework',
     'authentication',
     'BuisInt',
+    'forecasting',
+    'mongoengine',
 ]
 
 MIDDLEWARE = [
@@ -84,7 +86,20 @@ DATABASES = {
     }
 }
 
-
+# MongoDB Configuration
+MONGODB_SETTINGS = {
+    'db': 'sales_forecasting',
+    'host': 'localhost',
+    'port': 27017,
+}
+import mongoengine
+mongoengine.connect(
+    alias='default',
+    db='sales_forecasting',
+    host='localhost',
+    port=27017,
+    name='sales_forecasting'
+) 
 # Password validation
 # https://docs.djangoproject.com/en/5.0/ref/settings/#auth-password-validators
 

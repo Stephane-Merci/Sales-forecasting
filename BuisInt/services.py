@@ -35,8 +35,9 @@ class DataProcessingService:
             return {
                 'columns': list(self.data.columns),
                 'column_types': self.column_types,
-                'row_count': len(self.data),
-                'preview': self.data.head(5).to_dict(orient='records')
+                'data': self.data.to_dict(orient='records'),  # Return full data
+                'total_rows': len(self.data),
+                'total_columns': len(self.data.columns)
             }
         except Exception as e:
             raise ValueError(f"Error loading data: {str(e)}")
@@ -125,35 +126,37 @@ class DataProcessingService:
 
         return stats
 
-    def get_data_for_visualization(self, 
-                                 x_axis: str, 
-                                 y_axis: str, 
-                                 category: Optional[str] = None,
-                                 filters: Optional[List[Dict[str, Any]]] = None) -> Dict[str, Any]:
+    def get_data_for_visualization(self, x_axis, y_axis, category=None, filters=None):
         """
-        Prepare data for visualization based on selected columns and filters
+        Get data for visualization based on selected columns and filters.
+        Returns data in format suitable for chart.js
         """
         print(f"[DEBUG] get_data_for_visualization called with: x_axis={x_axis}, y_axis={y_axis}, category={category}, filters={filters}")
-
-        if self.data is None:
-            print("[DEBUG] No data loaded in get_data_for_visualization.")
-            raise ValueError("No data loaded")
-
-        # Apply filters if provided
-        filtered_data = self.apply_filters(filters) if filters else self.data.copy()
-        print(f"[DEBUG] Data after applying filters:\n{filtered_data.head()}")
-        print(f"[DEBUG] Filtered data shape: {filtered_data.shape}")
-
-        # --- Simplified data preparation for X and Y axes only ---
-        # Ensure selected columns exist after filtering
-        if x_axis not in filtered_data.columns or y_axis not in filtered_data.columns:
-             print(f"[DEBUG] X-axis ('{x_axis}') or Y-axis ('{y_axis}') column not found in filtered data.")
-             raise ValueError("Selected X or Y axis column not found after filtering.")
-
-        # Return data as lists for Chart.js
-        result = {
-            'x': filtered_data[x_axis].tolist(),
-            'y': filtered_data[y_axis].tolist()
-        }
-        print(f"[DEBUG] Returning data for visualization: {result}")
-        return result 
+        
+        # Apply filters if any
+        df = self.apply_filters(filters) if filters else self.data
+        print(f"[DEBUG] Data after applying filters:\n{df.head()}")
+        print(f"[DEBUG] Filtered data shape: {df.shape}")
+        
+        if category:  # If grouping is enabled
+            print(f"[DEBUG] Grouping by category (X-axis): {category}")
+            # Group by category and calculate mean of y_axis
+            grouped = df.groupby(category)[y_axis].mean()
+            print(f"[DEBUG] Grouped data (mean aggregation):\n{grouped.reset_index()}")
+            
+            # Return grouped data for visualization
+            result = {
+                'x': grouped.index.tolist(),  # Use index for categories
+                'y': grouped.values.tolist()  # Use values for means
+            }
+            print(f"[DEBUG] Returning grouped data for visualization: {result}")
+            return result
+            
+        else:  # If no grouping
+            # Return raw data for visualization
+            result = {
+                'x': df[x_axis].tolist(),
+                'y': df[y_axis].tolist()
+            }
+            print(f"[DEBUG] Returning raw data for visualization: {result}")
+            return result 

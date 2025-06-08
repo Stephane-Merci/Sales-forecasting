@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load static %}
 
 {% block title %}Data Analysis{% endblock %}
 
@@ -6,7 +7,150 @@
 container-fluid h-100 px-0 py-0
 {% endblock %}
 
+{% block extra_css %}
+{{ block.super }}
+<link rel="stylesheet" href="https://cdn.datatables.net/1.11.5/css/dataTables.bootstrap5.min.css">
+<link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.2.2/css/buttons.bootstrap5.min.css">
+<link rel="stylesheet" href="https://cdn.datatables.net/select/1.3.4/css/select.bootstrap5.min.css">
+<link rel="stylesheet" href="https://cdn.datatables.net/responsive/2.2.9/css/responsive.bootstrap5.min.css">
+<link rel="stylesheet" href="https://cdn.datatables.net/searchpanes/2.0.2/css/searchPanes.bootstrap5.min.css">
+<link rel="stylesheet" href="https://cdn.datatables.net/colreorder/1.5.4/css/colReorder.bootstrap5.min.css">
+<link rel="stylesheet" href="https://cdn.datatables.net/fixedheader/3.2.2/css/fixedHeader.bootstrap5.min.css">
+<link rel="stylesheet" href="https://cdn.datatables.net/fixedcolumns/4.0.2/css/fixedColumns.bootstrap5.min.css">
+<link rel="stylesheet" href="https://cdn.datatables.net/keytable/2.6.4/css/keyTable.bootstrap5.min.css">
+<link rel="stylesheet" href="https://cdn.datatables.net/rowgroup/1.1.4/css/rowGroup.bootstrap5.min.css">
+<link rel="stylesheet" href="https://cdn.datatables.net/rowreorder/1.2.8/css/rowReorder.bootstrap5.min.css">
+<link rel="stylesheet" href="https://cdn.datatables.net/scroller/2.0.5/css/scroller.bootstrap5.min.css">
+<link rel="stylesheet" href="https://cdn.datatables.net/searchbuilder/1.3.4/css/searchBuilder.bootstrap5.min.css">
+<link rel="stylesheet" href="https://cdn.datatables.net/stateRestore/1.1.1/css/stateRestore.bootstrap5.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css">
+<style>
+    /* ... existing styles ... */
+</style>
+{% endblock %}
+
 {% block content %}
+<!-- Add the Forecasting Modal -->
+<div class="modal fade" id="forecastingModal" tabindex="-1" aria-labelledby="forecastingModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="forecastingModalLabel">Configure Time Series Forecasting</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="forecastingForm">
+                    <!-- Data Configuration Section -->
+                    <div class="mb-4">
+                        <h6 class="mb-3">Data Configuration</h6>
+                        
+                        <!-- Date Column -->
+                        <div class="mb-3">
+                            <label for="dateColumn" class="form-label">Date/Time Column</label>
+                            <select class="form-select" id="dateColumn" required>
+                                <option value="">Select date column</option>
+                                <!-- Will be populated dynamically -->
+                            </select>
+                            <div class="form-text">Select the column containing your time series dates</div>
+                        </div>
+
+                        <!-- Target Column -->
+                        <div class="mb-3">
+                            <label for="targetColumn" class="form-label">Target Column</label>
+                            <select class="form-select" id="targetColumn" required>
+                                <option value="">Select target column</option>
+                                <!-- Will be populated dynamically -->
+                            </select>
+                            <div class="form-text">Select the column you want to forecast</div>
+                        </div>
+
+                        <!-- Product Column -->
+                        <div class="mb-3">
+                            <label for="productColumn" class="form-label">Product Column</label>
+                            <select class="form-select" id="productColumn" required>
+                                <option value="">Select product column</option>
+                                <!-- Will be populated dynamically -->
+                            </select>
+                            <div class="form-text">Select the column containing product identifiers</div>
+                        </div>
+
+                        <!-- Exogenous Variables -->
+                        <div class="mb-3">
+                            <label class="form-label">Exogenous Variables</label>
+                            <div id="exogenousVariables" class="border rounded p-3">
+                                <div class="form-text mb-2">Select additional columns that may affect the forecast</div>
+                                <div id="exogenousCheckboxes">
+                                    <!-- Will be populated dynamically -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Model Configuration Section -->
+                    <div class="mb-4">
+                        <h6 class="mb-3">Model Configuration</h6>
+                        
+                        <!-- Forecasting Method -->
+                        <div class="mb-3">
+                            <label for="forecastMethod" class="form-label">Forecasting Method</label>
+                            <select class="form-select" id="forecastMethod">
+                                <option value="lstm">LSTM Neural Network</option>
+                                <option value="arima">ARIMA</option>
+                                <option value="prophet">Prophet</option>
+                            </select>
+                        </div>
+
+                        <!-- Forecast Period -->
+                        <div class="mb-3">
+                            <label for="forecastPeriod" class="form-label">Forecast Period (days)</label>
+                            <input type="number" class="form-control" id="forecastPeriod" min="1" max="365" value="30">
+                        </div>
+
+                        <!-- Advanced Settings -->
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="showConfidenceInterval">
+                                <label class="form-check-label" for="showConfidenceInterval">
+                                    Show Confidence Interval
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Model Parameters (dynamic based on selected method) -->
+                        <div id="modelParameters" class="mb-3">
+                            <!-- Parameters will be dynamically loaded based on selected method -->
+                        </div>
+                    </div>
+                </form>
+
+                <!-- Results Preview Area -->
+                <div id="forecastResults" class="mt-4" style="display: none;">
+                    <h6>Forecast Results</h6>
+                    <div class="border rounded p-3">
+                        <canvas id="forecastChart"></canvas>
+                    </div>
+                    <div class="mt-3">
+                        <h6>Model Metrics</h6>
+                        <div id="modelMetrics" class="row">
+                            <!-- Metrics will be displayed here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" id="generateForecastBtn">Generate Forecast</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add this right after the <div class="row"> -->
+<div class="row">
+    <div id="alertContainer" class="col-12 mb-3"></div>
+    <!-- Rest of your content -->
+</div>
+
 <div class="row h-100 no-gutters debug-border" style="height: 100%; margin: 0 !important;"> {# no-gutters to remove column padding #}
     <!-- Left Sidebar: Columns, Chart Settings, and Filters -->
     <div class="col-md-4 col-lg-3 bg-light border-right h-100 overflow-auto main-content-col"> {# Increased left sidebar width, added custom class #}
@@ -23,6 +167,49 @@ container-fluid h-100 px-0 py-0
                      <span class="ms-2 text-muted">or drag and drop file here</span>
                 </div>
                  <small class="form-text text-muted mt-2 d-block">Supported format: CSV</small> {# Updated supported format and spacing #}
+            </div>
+        </div>
+
+        <!-- After the upload section and before the data table -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Load Saved Data</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-12">
+                        <div class="saved-files-container">
+                            {% if saved_files %}
+                                <div class="list-group">
+                                    {% for file in saved_files %}
+                                    <div class="list-group-item list-group-item-action">
+                                        <div class="d-flex w-100 justify-content-between align-items-center">
+                                            <div>
+                                                <h6 class="mb-1">{{ file.filename }}</h6>
+                                                <p class="mb-1 text-muted">{{ file.description|default:"No description" }}</p>
+                                                <small>Saved on: {{ file.upload_date|date:"F d, Y H:i" }}</small>
+                                            </div>
+                                            <div class="d-flex align-items-center">
+                                                <span class="badge bg-info me-2">{{ file.column_types|length }} columns</span>
+                                                <button type="button" 
+                                                        class="btn btn-primary load-saved-file-btn" 
+                                                        onclick="handleLoadFile('{{ file.id }}', '{{ file.filename }}')">
+                                                    <i class="fas fa-file-import"></i> Load
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            {% else %}
+                                <div class="text-center py-4">
+                                    <i class="fas fa-folder-open fa-3x text-muted mb-3"></i>
+                                    <p class="text-muted">No saved files found. Upload and save a file to see it here.</p>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -53,6 +240,8 @@ container-fluid h-100 px-0 py-0
                     </select>
                 </div>
 
+                
+
                 <div id="xaxis-dropzone" class="card mb-2 border rounded bg-white shadow-sm dropzone"> {# Added border, rounded, background, shadow #}
                     <div class="card-header">X Axis</div>
                     <div class="card-body p-2 text-muted text-center">
@@ -71,7 +260,20 @@ container-fluid h-100 px-0 py-0
             </div>
         </div> {# End row for horizontal layout #}
 
-        <!-- Filters Section -->
+        
+        <div class="card mb-2 border rounded bg-white shadow-sm">
+            <div class="px-4">
+                <div class="form-check card-body p-2 text-muted">
+                    {# Group by X-axis Checkbox #}
+                    <input class="form-check-input" type="checkbox" value="" id="group-by-xaxis-checkbox" >
+                    <label class="form-check-label" for="group-by-xaxis-checkbox">
+                        Group by X-axis
+                    </label>
+                </div>
+            </div>   
+        </div>
+
+        <!-- Filters Section official -->
          <div class="mb-4 px-3"> {# Added horizontal padding #}
             <h6>Filters</h6>
              <div id="filters-area" class="card mb-2 border rounded bg-white shadow-sm"> {# Added ID, border, rounded, background, shadow #}
@@ -98,7 +300,9 @@ container-fluid h-100 px-0 py-0
             <div>
                 {# Actions like Download, Run #}
                 <button id="run-button" class="btn btn-primary me-2"><i class="fas fa-play"></i> Run</button>
+                <button id="forecasting-button" class="btn btn-success me-2"><i class="fas fa-chart-line"></i> Forecasting</button>
                 <button class="btn btn-secondary me-2"><i class="fas fa-download"></i> Download</button>
+                <button id="saveFileBtn" class="btn btn-success me-2"><i class="fas fa-save"></i> Save</button>
                 {# More action buttons like View, Add to Dashboard #}
             </div>
         </div>
@@ -150,143 +354,150 @@ container-fluid h-100 px-0 py-0
 
     </div>
 </div>
-{% endblock %}
 
-{% block extra_css %}
-{{ block.super }}
-<style>
-/* Add custom styles here */
-html, body, .container-fluid.h-100, .row.h-100 {
-    height: 100%;
-    overflow: hidden; /* Prevent main scrollbar */
-}
+<!-- Add this modal for saving files -->
+<div class="modal fade" id="saveFileModal" tabindex="-1" aria-labelledby="saveFileModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="saveFileModalLabel">Save File</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="saveFileForm">
+                    <div class="mb-3">
+                        <label for="filename" class="form-label">Filename</label>
+                        <input type="text" class="form-control" id="filename" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="description" class="form-label">Description (optional)</label>
+                        <textarea class="form-control" id="description" rows="3"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="confirmSaveBtn">Save</button>
+            </div>
+        </div>
+    </div>
+</div>
 
-.border-right {
-    border-right: 1px solid #dee2e6;
-}
+<!-- Add this modal for loading saved files -->
+<div class="modal fade" id="loadFileModal" tabindex="-1" aria-labelledby="loadFileModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="loadFileModalLabel">Load Saved File</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="list-group" id="savedFilesList">
+                    <!-- Saved files will be listed here -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 
-.list-group-item i {
-    cursor: grab;
-}
+<!-- Add this button to the top controls -->
+<button id="loadFileBtn" class="btn btn-info me-2"><i class="fas fa-folder-open"></i> Load Saved File</button>
 
-.card-header {
-    padding: 0.5rem 0.75rem;
-    margin-bottom: 0;
-    background-color: rgba(0, 0, 0, .03);
-    border-bottom: 1px solid rgba(0, 0, 0, .125);
-}
+<!-- Add this after your existing content -->
+<div class="row mt-3">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Data Preview</h5>
+                <div class="d-flex align-items-center">
+                    <span class="badge bg-primary me-2" id="rowCount">0 rows</span>
+                    <button class="btn btn-sm btn-outline-primary" onclick="refreshData()">
+                        <i class="fas fa-sync-alt"></i> Refresh
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                <div id="dataTableContainer">
+                    <div class="text-center">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 
-.card-body.p-2 {
-    min-height: 50px; /* Ensure drag/drop areas have space */
-}
+<div class="row mt-3">
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Columns</h5>
+            </div>
+            <div class="card-body">
+                <div id="columnsContainer">
+                    <!-- Column badges will be inserted here -->
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Column Statistics</h5>
+            </div>
+            <div class="card-body">
+                <div id="columnStatsContainer">
+                    <!-- Column statistics will be inserted here -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 
-.nav-tabs .nav-link.active {
-    font-weight: bold;
-}
-
-/* Style for the visualization area placeholder */
-#visualization-area {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    height: 100%; /* Occupy remaining height */
-    font-size: 1.2em;
-}
-
-/* Adjust list item background for better contrast against light background */
-.list-group-item.bg-light {
-    background-color: #f8f9fa !important;
-}
-
-.row.no-gutters {
-    margin-left: 0;
-    margin-right: 0;
-}
-
-.row.no-gutters > [class*="col-"] {
-    padding-left: 0;
-    padding-right: 0;
-}
-
-/* Ensure main container has no padding */
-main.container-fluid.h-100.px-0.py-0 {
-    padding: 0 !important;
-    margin: 0 !important;
-}
-
-/* Remove padding from the main grid columns */
-.main-content-col {
-    padding: 0 !important;
-}
-
-/* Ensure the row inside main stretches full height */
-main.container-fluid.h-100.px-0.py-0 > .row.h-100.no-gutters {
-    height: 100%;
-    margin: 0 !important; /* Ensure no margin */
-}
-
-/* Style for dropzone areas */
-.dropzone {
-    border: 2px dashed #ced4da;
-    border-radius: 5px;
-    cursor: pointer;
-}
-
-.dropzone .card-body {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 80px; /* Increased min-height for drop area */
-}
-
-/* Style for draggable columns */
-.column-item {
-    cursor: grab;
-    white-space: nowrap; /* Prevent text from wrapping */
-    overflow: hidden; /* Hide overflowing text */
-    text-overflow: ellipsis; /* Display ellipsis for truncated text */
-    margin-bottom: 4px; /* Add some space between items */
-    border: 1px solid #e9ecef; /* Subtle border */
-    border-radius: 4px; /* Slightly rounded corners */
-}
-
-.column-item:hover {
-    background-color: #e2e6ea; /* Slightly darker background on hover */
-}
-
-/* Style for the add filter button */
-.add-filter-btn {
-    cursor: pointer;
-    color: #0d6efd; /* Bootstrap primary color */
-    text-decoration: none; /* Remove underline */
-}
-
-.add-filter-btn:hover {
-    text-decoration: underline; /* Add underline on hover */
-}
-
-/* Custom style for the file upload area */
-#file-upload-area {
-    border: 2px dashed #ced4da; /* Dashed border */
-    transition: all 0.3s ease; /* Smooth transition for hover effects */
-}
-
-#file-upload-area:hover {
-    border-color: #0d6efd; /* Change border color on hover */
-    background-color: #e9ecef; /* Slightly darker background on hover */
-}
-
-/* Style to hide the default file input button */
-#data-upload-input {
-    display: none;
-}
-
-</style>
+<div class="row mt-3">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Filters</h5>
+            </div>
+            <div class="card-body">
+                <div id="filtersContainer" class="row">
+                    <!-- Filter inputs will be inserted here -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
 {{ block.super }}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js"></script>
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.11.5/js/dataTables.bootstrap5.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.2.2/js/dataTables.buttons.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.2.2/js/buttons.bootstrap5.min.js"></script>
+<script src="https://cdn.datatables.net/select/1.3.4/js/dataTables.select.min.js"></script>
+<script src="https://cdn.datatables.net/responsive/2.2.9/js/dataTables.responsive.min.js"></script>
+<script src="https://cdn.datatables.net/responsive/2.2.9/js/responsive.bootstrap5.min.js"></script>
+<script src="https://cdn.datatables.net/searchpanes/2.0.2/js/dataTables.searchPanes.min.js"></script>
+<script src="https://cdn.datatables.net/searchpanes/2.0.2/js/searchPanes.bootstrap5.min.js"></script>
+<script src="https://cdn.datatables.net/colreorder/1.5.4/js/dataTables.colReorder.min.js"></script>
+<script src="https://cdn.datatables.net/fixedheader/3.2.2/js/dataTables.fixedHeader.min.js"></script>
+<script src="https://cdn.datatables.net/fixedcolumns/4.0.2/js/dataTables.fixedColumns.min.js"></script>
+<script src="https://cdn.datatables.net/keytable/2.6.4/js/dataTables.keyTable.min.js"></script>
+<script src="https://cdn.datatables.net/rowgroup/1.1.4/js/dataTables.rowGroup.min.js"></script>
+<script src="https://cdn.datatables.net/rowreorder/1.2.8/js/dataTables.rowReorder.min.js"></script>
+<script src="https://cdn.datatables.net/scroller/2.0.5/js/dataTables.scroller.min.js"></script>
+<script src="https://cdn.datatables.net/searchbuilder/1.3.4/js/dataTables.searchBuilder.min.js"></script>
+<script src="https://cdn.datatables.net/searchbuilder/1.3.4/js/searchBuilder.bootstrap5.min.js"></script>
+<script src="https://cdn.datatables.net/stateRestore/1.1.1/js/dataTables.stateRestore.min.js"></script>
+<script src="https://cdn.datatables.net/stateRestore/1.1.1/js/stateRestore.bootstrap5.min.js"></script>
+
 <script>
     document.querySelectorAll('.btn-outline-secondary').forEach(button => {
     button.addEventListener('click', function() {
@@ -719,6 +930,7 @@ document.querySelector('.add-filter-btn').addEventListener('click', function() {
 const chartTypeSelect = document.getElementById('chart-type-select');
 const xAxisDropzone = document.getElementById('xaxis-dropzone');
 const yAxisDropzone = document.getElementById('yaxis-dropzone');
+const groupByXAxisCheckbox = document.getElementById('group-by-xaxis-checkbox'); // Get checkbox reference
 
 // Function to toggle dropzone visibility based on chart type
 function toggleDropzonesVisibility() {
@@ -727,7 +939,7 @@ function toggleDropzonesVisibility() {
     // Define which dropzones are needed for each chart type
     const requiredDropzones = {
         'line': ['xaxis', 'yaxis'],
-        'bar': ['xaxis', 'yaxis'], // Bar charts can benefit from categories for grouping
+        'bar': ['xaxis', 'yaxis'], 
         'scatter': ['xaxis', 'yaxis'],
         'pie': ['xaxis', 'yaxis'] // Pie charts need values (yaxis) and labels (xaxis)
         // Add configurations for other chart types here
@@ -739,7 +951,6 @@ function toggleDropzonesVisibility() {
     // Hide all dropzones initially
     xAxisDropzone.style.display = 'none';
     yAxisDropzone.style.display = 'none';
-    // categoryDropzone was removed
 
     // Show only the needed dropzones
     if (needed.includes('xaxis')) xAxisDropzone.style.display = 'block';
@@ -752,6 +963,13 @@ function toggleDropzonesVisibility() {
     if (!needed.includes('xaxis')) xAxisDropzone.querySelector('.card-body').textContent = 'Drop here or click above';
     if (!needed.includes('yaxis')) yAxisDropzone.querySelector('.card-body').textContent = 'Drop here or click above';
 
+    // Hide Group by X-axis checkbox for scatter and pie charts initially as grouping might not be intuitive
+     if (selectedChartType === 'scatter' || selectedChartType === 'pie') {
+         groupByXAxisCheckbox.closest('.form-check').style.display = 'none';
+         groupByXAxisCheckbox.checked = false; // Uncheck if hidden
+     } else {
+         groupByXAxisCheckbox.closest('.form-check').style.display = 'block';
+     }
 }
 
 // Add event listener to chart type select
@@ -760,23 +978,37 @@ chartTypeSelect.addEventListener('change', toggleDropzonesVisibility);
 // Initial call to set correct dropzones visibility on page load
 toggleDropzonesVisibility();
 
+// Optional: Disable group by checkbox if no X-axis is selected
+const observer = new MutationObserver(() => {
+  const xAxisSelected = xAxisDropzone.dataset.column && xAxisDropzone.dataset.column !== '';
+  const formCheck = groupByXAxisCheckbox.closest('.form-check');
+  if (formCheck && formCheck.style.display !== 'none') {
+    groupByXAxisCheckbox.disabled = !xAxisSelected;
+    if (!xAxisSelected) groupByXAxisCheckbox.checked = false;
+  }
+});
+
+observer.observe(xAxisDropzone, { attributes: true, attributeFilter: ['data-column'] });
+
+
 // Update the Run button click handler
 document.getElementById('run-button').addEventListener('click', function() {
     const xAxisDropzone = document.getElementById('xaxis-dropzone');
     const yAxisDropzone = document.getElementById('yaxis-dropzone');
     const chartTypeSelect = document.getElementById('chart-type-select');
+    const groupByXAxisCheckbox = document.getElementById('group-by-xaxis-checkbox'); // Get checkbox reference again
 
     const xAxis = xAxisDropzone.dataset.column;
     const yAxis = yAxisDropzone.dataset.column;
     const selectedChartType = chartTypeSelect.value;
+    const groupByXAxis = groupByXAxisCheckbox.checked; // Check if grouping is enabled
 
     // Determine required dropzones based on the selected chart type
     const requiredDropzones = {
         'line': ['X-axis', 'Y-axis'],
         'bar': ['X-axis', 'Y-axis'], 
         'scatter': ['X-axis', 'Y-axis'],
-        'pie': ['X-axis', 'Y-axis'] // Pie chart needs labels (X-axis) and values (Y-axis)
-        // Add requirements for other chart types here
+        'pie': ['X-axis', 'Y-axis']
     };
 
     const neededDropzoneNames = requiredDropzones[selectedChartType] || [];
@@ -798,24 +1030,32 @@ document.getElementById('run-button').addEventListener('click', function() {
     // Get the type of the Y-axis column from the availableColumns data
     const yAxisType = availableColumns.find(col => col.name === yAxis)?.type || null;
 
-     // Check if Y-axis is numeric for chart types that require it (line, bar, scatter, pie values)
-     // Note: Pie charts technically can use categorical data for counts, but our backend aggregation is numeric.
-     // We'll enforce numeric Y-axis for now for consistency with current backend logic.
-    if (selectedChartType !== 'categorical-pie' && yAxisType !== 'numeric') { 
-        alert(`The Y-axis column for a ${selectedChartType} chart must be numeric.`); 
-        console.error(`Y-axis type mismatch for ${selectedChartType} chart: Expected numeric, got ${yAxisType}.`);
-        return;
+    // Check if Y-axis is numeric, especially required if grouping is enabled or for certain chart types
+    // If grouping by X-axis, Y-axis MUST be numeric for aggregation.
+    // For scatter and line, Y-axis is typically numeric.
+    // For bar, Y-axis is typically numeric (for height).
+    // For pie, Y-axis (values) MUST be numeric.
+
+    if (yAxisType !== 'numeric') {
+         alert(`The Y-axis column for a ${selectedChartType} chart must be numeric.`); 
+         console.error(`Y-axis type mismatch for ${selectedChartType} chart: Expected numeric, got ${yAxisType}.`);
+         return;
     }
+
+    // If grouping is enabled, ensure X-axis is selected (already checked by requiredDropzones for line/bar/scatter/pie)
+    // and Y-axis is numeric (checked above).
+
 
     console.log('Sending visualization data request with:');
     console.log('X-axis:', xAxis);
     console.log('Y-axis:', yAxis);
+    console.log('Group by X-axis:', groupByXAxis);
     console.log('Filters:', activeFilters);
     console.log('Selected Chart Type:', selectedChartType);
 
     // Get visualization data from backend
-    // The backend doesn't need chart type for data preparation, only the frontend does for rendering.
-    getVisualizationData(xAxis, yAxis, null, activeFilters)
+    // Pass xAxis as category if groupByXAxis is true
+    getVisualizationData(xAxis, yAxis, groupByXAxis ? xAxis : null, activeFilters)
         .then(data => {
             console.log('Received visualization data:', data);
             // Update visualization area with the data
@@ -850,14 +1090,14 @@ document.getElementById('run-button').addEventListener('click', function() {
                 let backgroundColors = [];
                 let borderColors = [];
 
-                if (selectedChartType === 'pie') {
-                    // Generate colors for each slice based on the data length
+                if (selectedChartType === 'pie' || groupByXAxis) { // Use multiple colors for pie or when grouping
+                    // Generate colors for each slice/group based on the data length
                     for (let i = 0; i < data.x.length; i++) {
                         backgroundColors.push(colorPalette[i % colorPalette.length]);
                         borderColors.push(borderPalette[i % borderPalette.length]);
                     }
                 } else {
-                    // Use single colors for other chart types as before
+                    // Use single colors for other chart types when not grouping
                      backgroundColors = selectedChartType === 'bar' ? 'rgba(54, 162, 235, 0.5)' : 'rgba(75, 192, 192, 0.5)';
                      borderColors = selectedChartType === 'bar' ? 'rgba(54, 162, 235, 1)' : 'rgba(75, 192, 192, 1)';
                 }
@@ -897,12 +1137,12 @@ document.getElementById('run-button').addEventListener('click', function() {
                         },
                         plugins: {
                             legend: {
-                                display: true, // Always display legend for pie chart
+                                display: true, // Always display legend when grouping or for pie chart
                                 position: selectedChartType === 'pie' ? 'right' : 'top', // Position legend to the right for pie chart
                             },
                             title: {
                                 display: true,
-                                text: `${yAxis} vs ${xAxis}` // Chart title
+                                text: `${yAxis} vs ${xAxis}${groupByXAxis ? ' (Grouped)' : ''}` // Chart title reflects grouping
                             }
                         }
                     }
@@ -932,6 +1172,248 @@ document.getElementById('run-button').addEventListener('click', function() {
              window.myChart = null; // Ensure myChart is null if data fetch failed
         });
 });
+
+// Add event listener for the forecasting button
+document.getElementById('forecasting-button').addEventListener('click', function() {
+    // Check if data is available
+    if (!window.availableColumns || window.availableColumns.length === 0) {
+        alert('Please upload and process data first.');
+        return;
+    }
+
+    // Populate the column selectors
+    populateColumnSelectors();
+    
+    // Show the modal
+    const forecastingModal = new bootstrap.Modal(document.getElementById('forecastingModal'));
+    forecastingModal.show();
+});
+
+// Handle forecasting method change
+document.getElementById('forecastMethod').addEventListener('change', function() {
+    const method = this.value;
+    const parametersDiv = document.getElementById('modelParameters');
+    
+    // Clear existing parameters
+    parametersDiv.innerHTML = '';
+    
+    // Add method-specific parameters
+    switch(method) {
+        case 'lstm':
+            parametersDiv.innerHTML = `
+                <div class="row">
+                    <div class="col-md-6">
+                        <label class="form-label">Sequence Length</label>
+                        <input type="number" class="form-control" id="lstmSequenceLength" value="10" min="1">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Epochs</label>
+                        <input type="number" class="form-control" id="lstmEpochs" value="50" min="1">
+                    </div>
+                </div>
+            `;
+            break;
+        case 'arima':
+            parametersDiv.innerHTML = `
+                <div class="row">
+                    <div class="col-md-4">
+                        <label class="form-label">p (AR)</label>
+                        <input type="number" class="form-control" id="arimaP" value="1" min="0">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">d (Differencing)</label>
+                        <input type="number" class="form-control" id="arimaD" value="1" min="0">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">q (MA)</label>
+                        <input type="number" class="form-control" id="arimaQ" value="1" min="0">
+                    </div>
+                </div>
+            `;
+            break;
+        case 'prophet':
+            parametersDiv.innerHTML = `
+                <div class="row">
+                    <div class="col-md-6">
+                        <label class="form-label">Growth Rate</label>
+                        <select class="form-select" id="prophetGrowth">
+                            <option value="linear">Linear</option>
+                            <option value="logistic">Logistic</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Seasonality Mode</label>
+                        <select class="form-select" id="prophetSeasonality">
+                            <option value="additive">Additive</option>
+                            <option value="multiplicative">Multiplicative</option>
+                        </select>
+                    </div>
+                </div>
+            `;
+            break;
+    }
+});
+
+// Handle forecast generation
+document.getElementById('generateForecastBtn').addEventListener('click', function() {
+    const dateColumn = document.getElementById('dateColumn').value;
+    const targetColumn = document.getElementById('targetColumn').value;
+    const productColumn = document.getElementById('productColumn').value;
+    
+    // Validate required fields
+    if (!dateColumn || !targetColumn || !productColumn) {
+        alert('Please select all required columns (Date, Target, and Product).');
+        return;
+    }
+
+    // Get selected exogenous variables
+    const exogenousVariables = Array.from(document.querySelectorAll('#exogenousCheckboxes input:checked'))
+        .map(checkbox => checkbox.value);
+
+    const method = document.getElementById('forecastMethod').value;
+    const period = document.getElementById('forecastPeriod').value;
+    const showConfidence = document.getElementById('showConfidenceInterval').checked;
+
+    // Get method-specific parameters
+    let parameters = {};
+    switch(method) {
+        case 'lstm':
+            parameters = {
+                sequence_length: document.getElementById('lstmSequenceLength').value,
+                epochs: document.getElementById('lstmEpochs').value
+            };
+            break;
+        case 'arima':
+            parameters = {
+                p: document.getElementById('arimaP').value,
+                d: document.getElementById('arimaD').value,
+                q: document.getElementById('arimaQ').value
+            };
+            break;
+        case 'prophet':
+            parameters = {
+                growth: document.getElementById('prophetGrowth').value,
+                seasonality: document.getElementById('prophetSeasonality').value
+            };
+            break;
+    }
+
+    // Make API call to forecasting endpoint
+    fetch('/forecasting/api/generate-forecast/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            date_column: dateColumn,
+            target_column: targetColumn,
+            product_column: productColumn,
+            exogenous_variables: exogenousVariables,
+            method: method,
+            period: period,
+            show_confidence: showConfidence,
+            parameters: parameters
+        })
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.status === 'success') {
+            // Show results area
+            document.getElementById('forecastResults').style.display = 'block';
+            
+            // Update chart
+            updateForecastChart(result.data);
+            
+            // Update metrics
+            updateModelMetrics(result.metrics);
+        } else {
+            throw new Error(result.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error in forecasting:', error);
+        alert('Error in forecasting: ' + error.message);
+    });
+});
+
+// Function to update the forecast chart
+function updateForecastChart(data) {
+    const ctx = document.getElementById('forecastChart').getContext('2d');
+    
+    // Destroy existing chart if it exists
+    if (window.forecastChart) {
+        window.forecastChart.destroy();
+    }
+    
+    // Create new chart
+    window.forecastChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: data.dates,
+            datasets: [
+                {
+                    label: 'Historical Data',
+                    data: data.historical,
+                    borderColor: 'rgba(75, 192, 192, 1)',
+                    backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                    fill: false
+                },
+                {
+                    label: 'Forecast',
+                    data: data.forecast,
+                    borderColor: 'rgba(255, 99, 132, 1)',
+                    backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                    fill: false
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                title: {
+                    display: true,
+                    text: 'Forecast Results'
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: false
+                }
+            }
+        }
+    });
+}
+
+// Function to update model metrics
+function updateModelMetrics(metrics) {
+    const metricsDiv = document.getElementById('modelMetrics');
+    metricsDiv.innerHTML = `
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body">
+                    <h6 class="card-title">RMSE</h6>
+                    <p class="card-text">${metrics.rmse.toFixed(2)}</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body">
+                    <h6 class="card-title">MAE</h6>
+                    <p class="card-text">${metrics.mae.toFixed(2)}</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body">
+                    <h6 class="card-title">R²</h6>
+                    <p class="card-text">${metrics.r2.toFixed(2)}</p>
+                </div>
+            </div>
+        </div>
+    `;
+}
 
 // Basic Bootstrap form validation (can be removed if not using a form on this page)
 (function () {
@@ -1025,5 +1507,971 @@ document.querySelectorAll('.btn-outline-secondary').forEach(button => {
 
 // Set Visualizations button as active by default on page load
 document.querySelector('.btn-outline-secondary:first-of-type').classList.add('active');
+
+// Function to populate column selectors
+function populateColumnSelectors() {
+    const dateSelect = document.getElementById('dateColumn');
+    const targetSelect = document.getElementById('targetColumn');
+    const productSelect = document.getElementById('productColumn');
+    const exogenousDiv = document.getElementById('exogenousCheckboxes');
+    
+    // Clear existing options
+    dateSelect.innerHTML = '<option value="">Select date column</option>';
+    targetSelect.innerHTML = '<option value="">Select target column</option>';
+    productSelect.innerHTML = '<option value="">Select product column</option>';
+    exogenousDiv.innerHTML = '';
+
+    // Get columns from the available data
+    if (!window.availableColumns || window.availableColumns.length === 0) {
+        console.warn('No columns available');
+        return;
+    }
+
+    // Populate selectors based on column types
+    window.availableColumns.forEach(column => {
+        // Add to date column select if it's a date type
+        if (column.type === 'date') {
+            const dateOption = document.createElement('option');
+            dateOption.value = column.name;
+            dateOption.textContent = column.name;
+            dateSelect.appendChild(dateOption);
+        }
+
+        // Add to target column select if it's numeric
+        if (column.type === 'numeric') {
+            const targetOption = document.createElement('option');
+            targetOption.value = column.name;
+            targetOption.textContent = column.name;
+            targetSelect.appendChild(targetOption);
+        }
+
+        // Add to product column select if it's categorical
+        if (column.type === 'categorical') {
+            const productOption = document.createElement('option');
+            productOption.value = column.name;
+            productOption.textContent = column.name;
+            productSelect.appendChild(productOption);
+        }
+
+        // Add to exogenous variables if it's numeric or categorical
+        if (column.type === 'numeric' || column.type === 'categorical') {
+            const checkboxDiv = document.createElement('div');
+            checkboxDiv.className = 'form-check';
+            checkboxDiv.innerHTML = `
+                <input class="form-check-input" type="checkbox" value="${column.name}" id="exog_${column.name}">
+                <label class="form-check-label" for="exog_${column.name}">
+                    ${column.name} (${column.type})
+                </label>
+            `;
+            exogenousDiv.appendChild(checkboxDiv);
+        }
+    });
+
+    // If no columns were found, show a message
+    if (dateSelect.options.length <= 1) {
+        dateSelect.innerHTML = '<option value="">No date columns found</option>';
+    }
+    if (targetSelect.options.length <= 1) {
+        targetSelect.innerHTML = '<option value="">No numeric columns found</option>';
+    }
+    if (productSelect.options.length <= 1) {
+        productSelect.innerHTML = '<option value="">No categorical columns found</option>';
+    }
+    if (exogenousDiv.children.length === 0) {
+        exogenousDiv.innerHTML = '<div class="text-muted">No suitable columns found for exogenous variables</div>';
+    }
+}
+
+// Save file button click handler
+document.getElementById('saveFileBtn').addEventListener('click', function() {
+    const saveFileModal = new bootstrap.Modal(document.getElementById('saveFileModal'));
+    saveFileModal.show();
+});
+
+// Confirm save button click handler
+document.getElementById('confirmSaveBtn').addEventListener('click', function() {
+    const filename = document.getElementById('filename').value;
+    const description = document.getElementById('description').value;
+
+    if (!filename) {
+        alert('Please enter a filename');
+        return;
+    }
+
+    fetch('/business/api/save-file/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            filename: filename,
+            description: description
+        })
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.status === 'success') {
+            alert('File saved successfully');
+            bootstrap.Modal.getInstance(document.getElementById('saveFileModal')).hide();
+            // Clear the form
+            document.getElementById('filename').value = '';
+            document.getElementById('description').value = '';
+        } else {
+            throw new Error(result.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error saving file:', error);
+        alert('Error saving file: ' + error.message);
+    });
+});
+
+// Load file button click handler
+document.getElementById('loadFileBtn').addEventListener('click', function() {
+    // Fetch saved files
+    fetch('/business/api/get-saved-files/')
+    .then(response => response.json())
+    .then(result => {
+        if (result.status === 'success') {
+            const filesList = document.getElementById('savedFilesList');
+            filesList.innerHTML = '';
+
+            result.data.forEach(file => {
+                const item = document.createElement('a');
+                item.href = '#';
+                item.className = 'list-group-item list-group-item-action saved-file-item';
+                item.dataset.fileId = file.id;
+                item.dataset.filename = file.filename;
+                item.innerHTML = `
+                    <div class="d-flex w-100 justify-content-between">
+                        <h6 class="mb-1">${file.filename}</h6>
+                        <small>${new Date(file.upload_date).toLocaleDateString()}</small>
+                    </div>
+                    <p class="mb-1">${file.description || 'No description'}</p>
+                    <small>Columns: ${Object.keys(file.column_types).join(', ')}</small>
+                `;
+                item.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    loadSavedFile(this.dataset.fileId, this.dataset.filename);
+                });
+                filesList.appendChild(item);
+            });
+
+            const loadFileModal = new bootstrap.Modal(document.getElementById('loadFileModal'));
+            loadFileModal.show();
+        } else {
+            throw new Error(result.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error loading files list:', error);
+        alert('Error loading files list: ' + error.message);
+    });
+});
+
+// Function to handle load button click
+function handleLoadFile(fileId, filename) {
+    console.log('handleLoadFile called with:', fileId, filename);
+    loadSavedFile(fileId, filename);
+}
+
+// Function to load a saved file
+function loadSavedFile(fileId, filename) {
+    console.log('loadSavedFile called with:', fileId, filename);
+    
+    // Show loading state
+    const loadingAlert = showAlert('Loading file...', 'info');
+    
+    fetch('/business/api/load-saved-file/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify({
+            file_id: fileId
+        })
+    })
+    .then(response => {
+        console.log('Response status:', response.status);
+        return response.json();
+    })
+    .then(result => {
+        console.log('Response data:', result);
+        
+        if (result.status === 'success' && result.data) {
+            // Remove loading alert
+            if (loadingAlert) {
+                loadingAlert.remove();
+            }
+            
+            const data = result.data;
+            
+            // Validate required data
+            if (!data.columns || !data.data || !data.column_types) {
+                throw new Error('Invalid data format received from server');
+            }
+            
+            // Update the data table
+            updateDataTable(data);
+            
+            // Update column types
+            window.columnTypes = data.column_types || {};
+            
+            // Update available columns
+            window.availableColumns = (data.columns || []).map(col => ({
+                name: col,
+                type: (data.column_types || {})[col] || 'unknown'
+            }));
+            console.log('Columns loaded:', window.availableColumns);
+            console.log('window.availableColumns after update:', window.availableColumns); // Debug log
+            updateColumnDisplay();
+            populateColumnSelectors();
+            
+            // Update column statistics if available
+            if (data.column_stats) {
+                try {
+                    updateColumnStats(data.column_stats);
+                } catch (error) {
+                    console.warn('Could not update column statistics:', error);
+                }
+            }
+            
+            // Update column display
+            updateColumnDisplay();
+            
+            // Update column filters
+            updateColumnFilters();
+            
+            // Show success message
+            showAlert(`File "${filename}" loaded successfully!`, 'success');
+            
+            // Enable all action buttons
+            const forecastingBtn = document.getElementById('forecasting-button');
+            const downloadBtn = document.getElementById('download-button');
+            const saveBtn = document.getElementById('saveFileBtn');
+            
+            if (forecastingBtn) forecastingBtn.disabled = false;
+            if (downloadBtn) downloadBtn.disabled = false;
+            if (saveBtn) saveBtn.disabled = false;
+        } else {
+            throw new Error(result.message || 'Failed to load file data');
+        }
+    })
+    .catch(error => {
+        console.error('Error loading file:', error);
+        if (loadingAlert) {
+            loadingAlert.remove();
+        }
+        showAlert('Error loading file: ' + error.message, 'danger');
+    });
+}
+
+// Function to get CSRF token
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+// Function to update column display
+function updateColumnDisplay() {
+    console.log('Updating column display');
+    console.log('DEBUG: window.availableColumns inside updateColumnDisplay:', window.availableColumns); // NEW DEBUG LOG
+    
+    const columnsContainer = document.getElementById('columnsContainer');
+    if (!columnsContainer) {
+        console.warn('Columns container not found');
+        return;
+    }
+    
+    // Clear existing columns
+    columnsContainer.innerHTML = '';
+    
+    if (!window.availableColumns || window.availableColumns.length === 0) {
+        columnsContainer.innerHTML = '<div class="text-muted">No columns available</div>';
+        return;
+    }
+
+    // Add column badges
+    window.availableColumns.forEach(column => {
+        const badge = document.createElement('span');
+        badge.className = `badge bg-${getColumnTypeColor(column.type)} me-2 mb-2`;
+        badge.textContent = `${column.name} (${column.type})`;
+        columnsContainer.appendChild(badge);
+    });
+}
+
+// Function to update column filters
+function updateColumnFilters() {
+    const filterContainer = document.getElementById('filterContainer');
+    if (!filterContainer) return;
+
+    filterContainer.innerHTML = '';
+    
+    if (!window.availableColumns || window.availableColumns.length === 0) {
+        return;
+    }
+
+    window.availableColumns.forEach(col => {
+        const filterDiv = document.createElement('div');
+        filterDiv.className = 'mb-3';
+        filterDiv.innerHTML = `
+            <label class="form-label">${col.name}</label>
+            <div class="input-group">
+                <input type="text" class="form-control" 
+                       placeholder="Filter ${col.name}" 
+                       data-column="${col.name}">
+            </div>
+        `;
+        filterContainer.appendChild(filterDiv);
+    });
+}
+
+// Function to get badge color based on column type
+function getTypeBadgeColor(type) {
+    switch(type.toLowerCase()) {
+        case 'numeric':
+            return 'primary';
+        case 'datetime':
+            return 'success';
+        case 'categorical':
+            return 'warning';
+        default:
+            return 'secondary';
+    }
+}
+
+// Function to show alerts
+function showAlert(message, type) {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+    alertDiv.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    `;
+    
+    // Insert at the top of the main content area
+    const mainContent = document.querySelector('.col-md-9');
+    mainContent.insertBefore(alertDiv, mainContent.firstChild);
+    
+    // Auto-dismiss after 5 seconds for success/info messages
+    if (type === 'success' || type === 'info') {
+        setTimeout(() => {
+            alertDiv.remove();
+        }, 5000);
+    }
+    
+    return alertDiv;
+}
+
+// Function to update the data table
+function updateDataTable(data) {
+    console.log('Updating data table with:', data); // Debug log
+    
+    const tableContainer = document.getElementById('dataTableContainer');
+    if (!tableContainer) {
+        console.error('Data table container not found');
+        return;
+    }
+    
+    // Clear existing table
+    tableContainer.innerHTML = '';
+    
+    // Create new table
+    const table = document.createElement('table');
+    table.className = 'table table-striped table-hover';
+    table.id = 'dataTable';
+    
+    // Create table header
+    const thead = document.createElement('thead');
+    const headerRow = document.createElement('tr');
+    
+    // Add column headers
+    data.columns.forEach(column => {
+        const th = document.createElement('th');
+        th.textContent = column;
+        headerRow.appendChild(th);
+    });
+    
+    thead.appendChild(headerRow);
+    table.appendChild(thead);
+    
+    // Create table body
+    const tbody = document.createElement('tbody');
+    
+    // Add data rows
+    if (data.data && data.data.length > 0) {
+        data.data.forEach(row => {
+            const tr = document.createElement('tr');
+            data.columns.forEach(column => {
+                const td = document.createElement('td');
+                td.textContent = row[column] !== undefined ? row[column] : '';
+                tr.appendChild(td);
+            });
+            tbody.appendChild(tr);
+        });
+    } else {
+        // Add a message row if no data
+        const tr = document.createElement('tr');
+        const td = document.createElement('td');
+        td.colSpan = data.columns.length;
+        td.className = 'text-center';
+        td.textContent = 'No data available';
+        tr.appendChild(td);
+        tbody.appendChild(tr);
+    }
+    
+    table.appendChild(tbody);
+    tableContainer.appendChild(table);
+}
+
+// Function to load a saved file
+function loadSavedFile(fileId, filename) {
+    console.log('loadSavedFile called with:', fileId, filename);
+    
+    // Show loading state
+    const loadingAlert = showAlert('Loading file...', 'info');
+    
+    fetch('/business/api/load-saved-file/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify({
+            file_id: fileId
+        })
+    })
+    .then(response => {
+        console.log('Response status:', response.status);
+        return response.json();
+    })
+    .then(result => {
+        console.log('Response data:', result);
+        
+        if (result.status === 'success' && result.data) {
+            // Remove loading alert
+            if (loadingAlert) {
+                loadingAlert.remove();
+            }
+            
+            const data = result.data;
+            
+            // Validate required data
+            if (!data.columns || !data.data || !data.column_types) {
+                throw new Error('Invalid data format received from server');
+            }
+            
+            // Update the data table
+            updateDataTable(data);
+            
+            // Update column types
+            window.columnTypes = data.column_types || {};
+            
+            // Update available columns
+            window.availableColumns = (data.columns || []).map(col => ({
+                name: col,
+                type: (data.column_types || {})[col] || 'unknown'
+            }));
+            
+            console.log('window.availableColumns before updateColumnDisplay:', window.availableColumns); // Debug log
+            
+            // Update the columns section
+            updateColumnDisplay();
+            
+            // Update column statistics if available
+            if (data.column_stats) {
+                try {
+                    updateColumnStats(data.column_stats);
+                } catch (error) {
+                    console.warn('Could not update column statistics:', error);
+                }
+            }
+            
+            // Update column display
+            updateColumnDisplay();
+            
+            // Update column filters
+            updateColumnFilters();
+            
+            // Show success message
+            showAlert(`File "${filename}" loaded successfully!`, 'success');
+            
+            // Enable all action buttons
+            const forecastingBtn = document.getElementById('forecasting-button');
+            const downloadBtn = document.getElementById('download-button');
+            const saveBtn = document.getElementById('saveFileBtn');
+            
+            if (forecastingBtn) forecastingBtn.disabled = false;
+            if (downloadBtn) downloadBtn.disabled = false;
+            if (saveBtn) saveBtn.disabled = false;
+        } else {
+            throw new Error(result.message || 'Failed to load file data');
+        }
+    })
+    .catch(error => {
+        console.error('Error loading file:', error);
+        if (loadingAlert) {
+            loadingAlert.remove();
+        }
+        showAlert('Error loading file: ' + error.message, 'danger');
+    });
+}
+
+// Function to refresh saved files list
+function refreshSavedFiles() {
+    fetch('/business/api/get-saved-files/')
+        .then(response => response.json())
+        .then(result => {
+            if (result.status === 'success') {
+                const filesList = document.getElementById('savedFilesList');
+                filesList.innerHTML = '';
+
+                if (result.data.length === 0) {
+                    filesList.innerHTML = `
+                        <div class="text-center text-muted py-3">
+                            <i class="fas fa-folder-open fa-2x mb-2"></i>
+                            <p>No saved files yet</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                result.data.forEach(file => {
+                    const fileElement = document.createElement('div');
+                    fileElement.className = 'list-group-item';
+                    fileElement.innerHTML = `
+                        <div class="d-flex w-100 justify-content-between">
+                            <h6 class="mb-1">${file.filename}</h6>
+                            <small>${new Date(file.upload_date).toLocaleDateString()}</small>
+                        </div>
+                        <p class="mb-1">${file.description || 'No description'}</p>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <small>Columns: ${Object.keys(file.column_types).length}</small>
+                            <button class="btn btn-sm btn-primary load-file-btn" 
+                                    data-file-id="${file.id}"
+                                    data-filename="${file.filename}">
+                                Load
+                            </button>
+                        </div>
+                    `;
+                    filesList.appendChild(fileElement);
+                });
+
+                // Add click handlers to new buttons
+                attachLoadFileHandlers();
+            }
+        })
+        .catch(error => {
+            console.error('Error refreshing files:', error);
+            showAlert('Error refreshing files list', 'danger');
+        });
+}
+
+// Function to attach click handlers to load buttons
+function attachLoadFileHandlers() {
+    document.querySelectorAll('.load-file-btn').forEach(button => {
+        button.addEventListener('click', function() {
+            const fileId = this.dataset.fileId;
+            const filename = this.dataset.filename;
+            
+            // Removed the confirm dialog here
+            loadSavedFile(fileId, filename);
+        });
+    });
+}
+
+// Add event listener for refresh button
+document.getElementById('refreshFilesBtn').addEventListener('click', refreshSavedFiles);
+
+// Initial load of saved files
+document.addEventListener('DOMContentLoaded', function() {
+    refreshSavedFiles();
+    attachLoadFileHandlers();
+    if (document.getElementById('group-by-xaxis-checkbox')) {
+        document.getElementById('group-by-xaxis-checkbox').addEventListener('change', function() {
+            // Event handling logic here
+        });
+    }
+});
+
+// Function to show alerts
+function showAlert(message, type) {
+    const alertContainer = document.getElementById('alertContainer');
+    if (!alertContainer) {
+        console.error('Alert container not found');
+        return null;
+    }
+
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+    alertDiv.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    `;
+    
+    alertContainer.appendChild(alertDiv);
+    
+    // Auto-dismiss after 5 seconds for success/info messages
+    if (type === 'success' || type === 'info') {
+        setTimeout(() => {
+            alertDiv.remove();
+        }, 5000);
+    }
+    
+    return alertDiv;
+}
+
+// Function to handle load button click
+function handleLoadFile(fileId, filename) {
+    console.log('handleLoadFile called with:', fileId, filename);
+}
+
+// Function to update column statistics
+function updateColumnStats(stats) {
+    console.log('Updating column statistics:', stats);
+    
+    const statsContainer = document.getElementById('columnStatsContainer');
+    if (!statsContainer) {
+        console.warn('Column stats container not found');
+        return;
+    }
+    
+    // Clear existing stats
+    statsContainer.innerHTML = '';
+    
+    // Create stats display
+    Object.entries(stats).forEach(([column, columnStats]) => {
+        if (!columnStats) return;
+        
+        const statCard = document.createElement('div');
+        statCard.className = 'card mb-3';
+        
+        const cardHeader = document.createElement('div');
+        cardHeader.className = 'card-header';
+        cardHeader.textContent = column;
+        
+        const cardBody = document.createElement('div');
+        cardBody.className = 'card-body';
+        
+        // Add statistics based on column type
+        if (columnStats.unique_values !== undefined) {
+            // Categorical column
+            cardBody.innerHTML = `
+                <p><strong>Unique Values:</strong> ${columnStats.unique_values}</p>
+                <p><strong>Top Values:</strong></p>
+                <ul>
+                    ${Object.entries(columnStats.top_values || {})
+                        .map(([value, count]) => `<li>${value}: ${count}</li>`)
+                        .join('')}
+                </ul>
+            `;
+        } else {
+            // Numeric column
+            cardBody.innerHTML = `
+                <p><strong>Min:</strong> ${columnStats.min}</p>
+                <p><strong>Max:</strong> ${columnStats.max}</p>
+                <p><strong>Mean:</strong> ${columnStats.mean.toFixed(2)}</p>
+                <p><strong>Median:</strong> ${columnStats.median.toFixed(2)}</p>
+                <p><strong>Standard Deviation:</strong> ${columnStats.std.toFixed(2)}</p>
+            `;
+        }
+        
+        statCard.appendChild(cardHeader);
+        statCard.appendChild(cardBody);
+        statsContainer.appendChild(statCard);
+    });
+}
+
+// Function to update column display
+function updateColumnDisplay() {
+    console.log('Updating column display');
+    
+    const columnsContainer = document.getElementById('columnsContainer');
+    if (!columnsContainer) {
+        console.warn('Columns container not found');
+        return;
+    }
+    
+    // Clear existing columns
+    columnsContainer.innerHTML = '';
+    
+    // Add column badges
+    window.availableColumns.forEach(column => {
+        const badge = document.createElement('span');
+        badge.className = `badge bg-${getColumnTypeColor(column.type)} me-2 mb-2`;
+        badge.textContent = `${column.name} (${column.type})`;
+        columnsContainer.appendChild(badge);
+    });
+}
+
+// Function to update column filters
+function updateColumnFilters() {
+    console.log('Updating column filters');
+    
+    const filtersContainer = document.getElementById('filtersContainer');
+    if (!filtersContainer) {
+        console.warn('Filters container not found');
+        return;
+    }
+    
+    // Clear existing filters
+    filtersContainer.innerHTML = '';
+    
+    // Add filter inputs for each column
+    window.availableColumns.forEach(column => {
+        const filterGroup = document.createElement('div');
+        filterGroup.className = 'mb-3';
+        
+        const label = document.createElement('label');
+        label.className = 'form-label';
+        label.textContent = column.name;
+        
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.className = 'form-control';
+        input.placeholder = `Filter ${column.name}...`;
+        input.dataset.column = column.name;
+        
+        filterGroup.appendChild(label);
+        filterGroup.appendChild(input);
+        filtersContainer.appendChild(filterGroup);
+    });
+}
+
+// Helper function to get color based on column type
+function getColumnTypeColor(type) {
+    switch (type.toLowerCase()) {
+        case 'numeric':
+            return 'primary';
+        case 'categorical':
+            return 'success';
+        case 'date':
+            return 'info';
+        default:
+            return 'secondary';
+    }
+}
+
+function loadSavedFile(fileId) {
+    console.log('Loading saved file:', fileId);
+    
+    // Show loading state
+    document.getElementById('dataTableContainer').innerHTML = '<div class="text-center"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></span></div></div>';
+    
+    // Get CSRF token from cookie
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+    const csrftoken = getCookie('csrftoken');
+    
+    fetch('/business/api/load-saved-file/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrftoken
+        },
+        body: JSON.stringify({ file_id: fileId })
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+    })
+    .then(response => {
+        console.log('Load saved file response:', response);
+        
+        if (response.status === 'success') {
+            const data = response.data;
+            
+            // Update column types and available columns
+            window.columnTypes = data.column_types || {};
+            window.availableColumns = (data.columns || []).map(col => ({
+                name: col,
+                type: (data.column_types || {})[col] || 'unknown'
+            }));
+            
+            // Update the columns section
+            updateColumnDisplay();
+            
+            // Update column statistics
+            if (data.column_stats) {
+                updateColumnStats(data.column_stats);
+            }
+            
+            // Update filter section
+            updateFilterSection();
+            
+            // Display data table
+            if (data.data && data.data.length > 0) {
+                const table = createDataTable(data.data);
+                document.getElementById('dataTableContainer').innerHTML = table;
+                
+                // Update row count
+                const rowCountElement = document.getElementById('rowCount');
+                if (rowCountElement) {
+                    rowCountElement.textContent = `${data.total_rows} rows`;
+                }
+            } else {
+                document.getElementById('dataTableContainer').innerHTML = '<div class="alert alert-info">No data available</div>';
+            }
+            
+            // Show success message
+            showAlert('File loaded successfully', 'success');
+        } else {
+            showAlert(response.message || 'Error loading file', 'danger');
+        }
+    })
+    .catch(error => {
+        console.error('Error loading saved file:', error);
+        showAlert('Error loading file: ' + error.message, 'danger');
+    });
+}
+
+// Function to update filter section
+function updateFilterSection() {
+    console.log('Updating filter section');
+    const filtersContainer = document.getElementById('filtersContainer');
+    if (!filtersContainer) {
+        console.error('Filters container not found');
+        return;
+    }
+
+    // Clear existing filters
+    filtersContainer.innerHTML = '';
+
+    // Get available columns
+    const columns = window.availableColumns || [];
+    const columnTypes = window.columnTypes || {};
+
+    // Create filter inputs for each column
+    columns.forEach(column => {
+        const columnName = column.name;
+        const columnType = columnTypes[columnName] || 'unknown';
+
+        // Create filter container
+        const filterDiv = document.createElement('div');
+        filterDiv.className = 'col-md-4 mb-3';
+        filterDiv.innerHTML = `
+            <div class="card">
+                <div class="card-body">
+                    <h6 class="card-title">${columnName}</h6>
+                    <p class="card-subtitle mb-2 text-muted">Type: ${columnType}</p>
+                    ${getFilterInput(columnName, columnType)}
+                </div>
+            </div>
+        `;
+        filtersContainer.appendChild(filterDiv);
+    });
+}
+
+// Helper function to get appropriate filter input based on column type
+function getFilterInput(columnName, columnType) {
+    switch (columnType.toLowerCase()) {
+        case 'numeric':
+            return `
+                <div class="input-group">
+                    <input type="number" class="form-control filter-input" 
+                           data-column="${columnName}" 
+                           placeholder="Enter value">
+                </div>
+            `;
+        case 'categorical':
+            return `
+                <select class="form-select filter-input" data-column="${columnName}">
+                    <option value="">Select value</option>
+                </select>
+            `;
+        case 'datetime':
+            return `
+                <div class="input-group">
+                    <input type="date" class="form-control filter-input" 
+                           data-column="${columnName}">
+                </div>
+            `;
+        default:
+            return `
+                <div class="input-group">
+                    <input type="text" class="form-control filter-input" 
+                           data-column="${columnName}" 
+                           placeholder="Enter value">
+                </div>
+            `;
+    }
+}
+
+// Function to create data table
+function createDataTable(data) {
+    if (!data || data.length === 0) {
+        return '<div class="alert alert-info">No data available</div>';
+    }
+
+    // Get column names from the first row
+    const columns = Object.keys(data[0]);
+    
+    // Create table HTML
+    let tableHtml = `
+        <table class="table table-striped table-bordered" id="dataTable">
+            <thead>
+                <tr>
+                    ${columns.map(col => `<th>${col}</th>`).join('')}
+                </tr>
+            </thead>
+            <tbody>
+                ${data.map(row => `
+                    <tr>
+                        ${columns.map(col => `<td>${row[col]}</td>`).join('')}
+                    </tr>
+                `).join('')}
+            </tbody>
+        </table>
+    `;
+
+    // Initialize DataTable after the table is added to the DOM
+    setTimeout(() => {
+        if ($.fn.DataTable.isDataTable('#dataTable')) {
+            $('#dataTable').DataTable().destroy();
+        }
+        $('#dataTable').DataTable({
+            responsive: true,
+            dom: 'Bfrtip',
+            buttons: [
+                'copy', 'csv', 'excel', 'pdf', 'print'
+            ],
+            pageLength: 10,
+            lengthMenu: [[10, 25, 50, -1], [10, 25, 50, "All"]]
+        });
+    }, 0);
+
+    return tableHtml;
+}
+
+if (document.getElementById('group-by-xaxis-checkbox')) {
+    document.getElementById('group-by-xaxis-checkbox').addEventListener('change', function() {
+        // Event handling logic here
+    });
+}
 </script>
 {% endblock %} 
