@@ -3,11 +3,52 @@ import numpy as np
 import io
 from typing import List, Dict, Any, Optional
 import json
+import re
+from datetime import datetime
 
 class DataProcessingService:
     def __init__(self):
         self.data = None
         self.column_types = {}
+
+    def check_date_format(self, value: str) -> tuple[bool, str]:
+        """
+        Check if a string matches common date formats.
+        Returns (is_date, format_found)
+        """
+        # Strip any leading/trailing whitespace
+        value = value.strip()
+        
+        # Common date formats to check
+        date_formats = [
+            # DD/MM/YYYY
+            (r'^\d{2}/\d{2}/\d{4}$', '%d/%m/%Y'),
+            # YYYY/MM/DD
+            (r'^\d{4}/\d{2}/\d{2}$', '%Y/%m/%d'),
+            # DD-MM-YYYY
+            (r'^\d{2}-\d{2}-\d{4}$', '%d-%m-%Y'),
+            # YYYY-MM-DD
+            (r'^\d{4}-\d{2}-\d{2}$', '%Y-%m-%d'),
+            # DD.MM.YYYY
+            (r'^\d{2}\.\d{2}\.\d{4}$', '%d.%m.%Y'),
+            # MM/DD/YYYY
+            (r'^\d{2}/\d{2}/\d{4}$', '%m/%d/%Y'),
+            # Short year formats
+            (r'^\d{2}/\d{2}/\d{2}$', '%d/%m/%y'),
+            (r'^\d{2}-\d{2}-\d{2}$', '%d-%m-%y'),
+        ]
+        
+        for pattern, date_format in date_formats:
+            if re.match(pattern, value):
+                try:
+                    # Try to parse the date to validate it
+                    datetime.strptime(value, date_format)
+                    return True, date_format
+                except ValueError:
+                    # If parsing fails, continue to next format
+                    continue
+        
+        return False, ""
 
     def load_data(self, file_content: str) -> Dict[str, Any]:
         """
@@ -20,17 +61,45 @@ class DataProcessingService:
             # Determine column types
             self.column_types = {}
             for column in self.data.columns:
+                print(f"[DEBUG] Processing column: {column}")
+                print(f"[DEBUG] First few values: {self.data[column].head()}")
+                
                 # Check if column is numeric
                 if pd.api.types.is_numeric_dtype(self.data[column]):
+                    print(f"[DEBUG] {column} detected as numeric")
                     self.column_types[column] = 'numeric'
-                # Check if column is datetime
-                elif pd.api.types.is_datetime64_any_dtype(self.data[column]):
-                    self.column_types[column] = 'datetime'
-                # Default to string/categorical
                 else:
-                    self.column_types[column] = 'categorical'
+                    # Try to detect if it's a date column using our custom function
+                    sample_size = min(100, len(self.data))
+                    date_matches = 0
+                    non_null_samples = 0
+                    detected_format = None
+                    
+                    # Sample non-null values
+                    for value in self.data[column].dropna().head(sample_size):
+                        if isinstance(value, str):
+                            is_date, format_found = self.check_date_format(value)
+                            if is_date:
+                                date_matches += 1
+                                if not detected_format:
+                                    detected_format = format_found
+                            non_null_samples += 1
+                    
+                    # If more than 90% of non-null samples match date format
+                    if non_null_samples > 0 and (date_matches / non_null_samples) > 0.9:
+                        print(f"[DEBUG] {column} detected as date with format {detected_format}")
+                        try:
+                            # Convert the column to datetime
+                            self.data[column] = pd.to_datetime(self.data[column], format=detected_format)
+                            self.column_types[column] = 'date'
+                        except Exception as e:
+                            print(f"[DEBUG] Failed to convert {column} to datetime: {str(e)}")
+                            self.column_types[column] = 'categorical'
+                    else:
+                        print(f"[DEBUG] {column} detected as categorical")
+                        self.column_types[column] = 'categorical'
 
-            print(f"[DEBUG] Inferred column types: {self.column_types}")
+            print(f"[DEBUG] Final column types: {self.column_types}")
 
             return {
                 'columns': list(self.data.columns),
@@ -40,6 +109,7 @@ class DataProcessingService:
                 'total_columns': len(self.data.columns)
             }
         except Exception as e:
+            print(f"[DEBUG] Error in load_data: {str(e)}")
             raise ValueError(f"Error loading data: {str(e)}")
 
     def apply_filters(self, filters: List[Dict[str, Any]]) -> pd.DataFrame:

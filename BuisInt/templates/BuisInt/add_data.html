@@ -211,21 +211,19 @@ container-fluid h-100 px-0 py-0
                         <!-- Product Column -->
                         <div class="mb-3">
                             <label for="productColumn" class="form-label">Product Column</label>
-                            <select class="form-select" id="productColumn" required>
-                                <option value="">Select product column</option>
+                            <select class="form-select" id="productColumn">
+                                <option value="">Select product column (Optional)</option>
                                 <!-- Will be populated dynamically -->
                             </select>
-                            <div class="form-text">Select the column containing product identifiers</div>
+                            <div class="form-text">Select the column containing product identifiers (optional)</div>
                         </div>
 
                         <!-- Exogenous Variables -->
                         <div class="mb-3">
                             <label class="form-label">Exogenous Variables</label>
-                            <div id="exogenousVariables" class="border rounded p-3">
-                                <div class="form-text mb-2">Select additional columns that may affect the forecast</div>
-                                <div id="exogenousCheckboxes">
-                                    <!-- Will be populated dynamically -->
-                                </div>
+                            <div id="exogenousColumns" class="border rounded p-3">
+                                <div class="form-text mb-2">Select additional numeric columns that may affect the forecast</div>
+                                <!-- Will be populated dynamically -->
                             </div>
                         </div>
                     </div>
@@ -876,7 +874,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // File upload handler
     function handleFileUpload(file) {
-        console.log('Processing file:', file.name);
+        console.log('[DEBUG] Processing file:', file.name);
         
         // Show loading alert
         const loadingAlert = showAlert('Processing file...', 'info');
@@ -896,7 +894,7 @@ document.addEventListener('DOMContentLoaded', function() {
         })
         .then(response => response.json())
         .then(result => {
-            console.log('Response data:', result);
+            console.log('[DEBUG] Upload response:', result);
             
             if (result.status === 'success' && result.data) {
                 // Remove loading alert
@@ -911,6 +909,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     throw new Error('Invalid data format received from server');
                 }
                 
+                console.log('[DEBUG] Column types received:', data.column_types);
+                
                 // Update the data table
                 updateDataTable(data);
                 
@@ -923,7 +923,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     type: (data.column_types || {})[col] || 'unknown'
                 }));
                 
-                console.log('Columns loaded:', window.availableColumns);
+                console.log('[DEBUG] Processed columns:', window.availableColumns);
                 
                 // Update columns list
                 updateColumnsList();
@@ -952,7 +952,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         })
         .catch(error => {
-            console.error('Error processing file:', error);
+            console.error('[DEBUG] Error processing file:', error);
             if (loadingAlert) {
                 loadingAlert.remove();
             }
@@ -1208,35 +1208,52 @@ function updateColumnDisplay() {
 
 // Function to populate column selectors in the forecasting modal
 function populateColumnSelectors() {
-    const selectors = [
-        'dateColumn',
-        'targetColumn',
-        'productColumn'
-    ];
-    
-    selectors.forEach(selectorId => {
-        const select = document.getElementById(selectorId);
-        if (!select) return;
-        
-        // Clear existing options
-        select.innerHTML = '<option value="">Select column</option>';
-        
-        // Add new options
-        if (window.availableColumns) {
-            window.availableColumns.forEach(column => {
-                const option = document.createElement('option');
-                option.value = column.name;
-                option.textContent = column.name;
-                select.appendChild(option);
-            });
+    console.log('[DEBUG] Populating column selectors');
+    const dateColumn = document.getElementById('dateColumn');
+    const targetColumn = document.getElementById('targetColumn');
+    const productColumn = document.getElementById('productColumn');
+    const exogenousColumns = document.getElementById('exogenousColumns');
+
+    if (!dateColumn || !targetColumn || !productColumn || !exogenousColumns) {
+        console.error('[DEBUG] One or more selectors not found');
+        return;
+    }
+
+    // Clear existing options
+    dateColumn.innerHTML = '<option value="">Select Date/Time Column</option>';
+    targetColumn.innerHTML = '<option value="">Select Target Column</option>';
+    productColumn.innerHTML = '<option value="">Select Product Column (Optional)</option>';
+    exogenousColumns.innerHTML = '';
+
+    if (!window.availableColumns) {
+        console.error('[DEBUG] No available columns found');
+        return;
+    }
+
+    console.log('[DEBUG] Available columns:', window.availableColumns);
+    console.log('[DEBUG] Column types:', window.columnTypes);
+
+    // Add options based on column types
+    window.availableColumns.forEach(column => {
+        console.log(`[DEBUG] Processing column: ${column.name}, type: ${column.type}`);
+        const option = document.createElement('option');
+        option.value = column.name;
+        option.textContent = `${column.name} (${column.type})`;
+
+        // Add date and datetime columns to date selector
+        if (column.type === 'datetime' || column.type === 'date') {
+            console.log(`[DEBUG] Adding ${column.name} to date selector`);
+            const dateOption = option.cloneNode(true);
+            dateOption.textContent = `${column.name} (${column.type === 'datetime' ? 'Date & Time' : 'Date Only'})`;
+            dateColumn.appendChild(dateOption);
         }
-    });
-    
-    // Populate exogenous variables checkboxes
-    const exogenousContainer = document.getElementById('exogenousCheckboxes');
-    if (exogenousContainer && window.availableColumns) {
-        exogenousContainer.innerHTML = '';
-        window.availableColumns.forEach(column => {
+
+        // Add numeric columns to target and exogenous selectors
+        if (column.type === 'numeric') {
+            console.log(`[DEBUG] Adding ${column.name} to target selector`);
+            targetColumn.appendChild(option.cloneNode(true));
+            
+            // Add checkbox for exogenous variables
             const div = document.createElement('div');
             div.className = 'form-check';
             div.innerHTML = `
@@ -1245,9 +1262,19 @@ function populateColumnSelectors() {
                     ${column.name}
                 </label>
             `;
-            exogenousContainer.appendChild(div);
-        });
-    }
+            exogenousColumns.appendChild(div);
+        }
+
+        // Add all columns to product selector
+        const productOption = option.cloneNode(true);
+        productOption.textContent = column.name;  // Remove type for product column
+        productColumn.appendChild(productOption);
+    });
+
+    // Log final state
+    console.log('[DEBUG] Date column options:', dateColumn.options.length);
+    console.log('[DEBUG] Target column options:', targetColumn.options.length);
+    console.log('[DEBUG] Product column options:', productColumn.options.length);
 }
 
 // Function to update column statistics
@@ -1954,7 +1981,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const dateSelect = document.getElementById('dateColumn');
         const targetSelect = document.getElementById('targetColumn');
         const productSelect = document.getElementById('productColumn');
-        const exogenousContainer = document.getElementById('exogenousCheckboxes');
+        const exogenousContainer = document.getElementById('exogenousColumns');
 
         if (!window.availableColumns) {
             console.error('No columns available');
@@ -1969,8 +1996,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Add options for each column
         window.availableColumns.forEach(col => {
-            // Add to date select (only datetime columns)
-            if (col.type === 'datetime') {
+            // Add to date select (date and datetime columns)
+            if (col.type === 'date' || col.type === 'datetime') {
                 dateSelect.add(new Option(col.name, col.name));
             }
 
