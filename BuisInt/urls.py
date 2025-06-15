@@ -15,4 +15,5 @@ urlpatterns = [
     path('api/save-file/', views.save_file, name='api_save_file'),
     path('api/load-saved-file/', views.load_saved_file, name='api_load_saved_file'),
     path('api/get-saved-files/', views.get_saved_files, name='api_get_saved_files'),
+    path('api/delete-saved-file/', views.delete_saved_file, name='api_delete_saved_file'),
 ] 

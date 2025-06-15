@@ -1,0 +1,269 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Forecasting Dashboard{% endblock %}
+
+{% block extra_css %}
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<style>
+    .forecast-card {
+        transition: transform 0.2s;
+    }
+    .forecast-card:hover {
+        transform: translateY(-5px);
+    }
+    .metric-card {
+        border-left: 4px solid #4CAF50;
+    }
+    .chart-container {
+        height: 400px;
+    }
+    .parameter-group {
+        display: none;
+    }
+    .parameter-group.active {
+        display: block;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>Forecasting Dashboard</h2>
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#newForecastModal">
+            <i class="fas fa-plus"></i> New Forecast
+        </button>
+    </div>
+
+    <!-- Quick Stats -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card metric-card">
+                <div class="card-body">
+                    <h6 class="card-subtitle mb-2 text-muted">Total Forecasts</h6>
+                    <h2 class="card-title mb-0" id="totalForecasts">{{ models.count }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card metric-card">
+                <div class="card-body">
+                    <h6 class="card-subtitle mb-2 text-muted">Active Models</h6>
+                    <h2 class="card-title mb-0" id="activeModels">{{ models.count }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card metric-card">
+                <div class="card-body">
+                    <h6 class="card-subtitle mb-2 text-muted">Best Performing Model</h6>
+                    <h5 class="card-title mb-0" id="bestModel">-</h5>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card metric-card">
+                <div class="card-body">
+                    <h6 class="card-subtitle mb-2 text-muted">Latest Forecast</h6>
+                    <h5 class="card-title mb-0" id="latestForecast">-</h5>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="row">
+        <!-- Forecast Models List -->
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Forecast Models</h5>
+                </div>
+                <div class="card-body">
+                    <div class="list-group" id="forecastModelsList">
+                        {% for model in models %}
+                        <a href="#" class="list-group-item list-group-item-action" data-model-id="{{ model.id }}">
+                            <div class="d-flex w-100 justify-content-between">
+                                <h6 class="mb-1">{{ model.name }}</h6>
+                                <small>{{ model.method }}</small>
+                            </div>
+                            <p class="mb-1">{{ model.target_column }}</p>
+                            <small>Created: {{ model.created_at|date:"Y-m-d H:i" }}</small>
+                        </a>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Forecast Details -->
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Forecast Details</h5>
+                </div>
+                <div class="card-body">
+                    <div id="forecastChart" class="chart-container mb-4"></div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>Model Parameters</h6>
+                            <div id="modelParameters">
+                                <p class="text-muted">Select a model to view details</p>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>Performance Metrics</h6>
+                            <div id="modelMetrics">
+                                <p class="text-muted">Select a model to view metrics</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- New Forecast Modal -->
+<div class="modal fade" id="newForecastModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Create New Forecast</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="newForecastForm">
+                    <div class="mb-3">
+                        <label class="form-label">Model Name</label>
+                        <input type="text" class="form-control" name="name" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Data Source</label>
+                        <select class="form-control" name="dataSource" required>
+                            <option value="upload">Upload New Data</option>
+                            <option value="existing">Use Existing Data</option>
+                        </select>
+                    </div>
+
+                    <div id="uploadSection" class="mb-3">
+                        <label class="form-label">Upload Data (CSV)</label>
+                        <input type="file" class="form-control" name="dataFile" accept=".csv">
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Date Column</label>
+                                <select class="form-control" name="dateColumn" required></select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Target Column</label>
+                                <select class="form-control" name="targetColumn" required></select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Forecasting Method</label>
+                        <select class="form-control" name="method" required>
+                            <option value="lstm">LSTM Neural Network</option>
+                            <option value="arima">ARIMA</option>
+                            <option value="prophet">Prophet</option>
+                        </select>
+                    </div>
+
+                    <!-- LSTM Parameters -->
+                    <div class="parameter-group" id="lstmParams">
+                        <h6>LSTM Parameters</h6>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Sequence Length</label>
+                                    <input type="number" class="form-control" name="lstmSequenceLength" value="10" min="1">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Epochs</label>
+                                    <input type="number" class="form-control" name="lstmEpochs" value="50" min="1">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ARIMA Parameters -->
+                    <div class="parameter-group" id="arimaParams">
+                        <h6>ARIMA Parameters</h6>
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label class="form-label">p (AR)</label>
+                                    <input type="number" class="form-control" name="arimaP" value="1" min="0">
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label class="form-label">d (Differencing)</label>
+                                    <input type="number" class="form-control" name="arimaD" value="1" min="0">
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label class="form-label">q (MA)</label>
+                                    <input type="number" class="form-control" name="arimaQ" value="1" min="0">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Prophet Parameters -->
+                    <div class="parameter-group" id="prophetParams">
+                        <h6>Prophet Parameters</h6>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Growth</label>
+                                    <select class="form-control" name="prophetGrowth">
+                                        <option value="linear">Linear</option>
+                                        <option value="logistic">Logistic</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Seasonality Mode</label>
+                                    <select class="form-control" name="prophetSeasonality">
+                                        <option value="additive">Additive</option>
+                                        <option value="multiplicative">Multiplicative</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Forecast Period (days)</label>
+                        <input type="number" class="form-control" name="period" value="30" min="1" max="365" required>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="generateForecastBtn">Generate Forecast</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+<script src="{% static 'forecasting/js/dashboard.js' %}"></script>
+{% endblock %} 

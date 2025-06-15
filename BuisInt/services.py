@@ -44,49 +44,138 @@ class DataProcessingService:
 
     def apply_filters(self, filters: List[Dict[str, Any]]) -> pd.DataFrame:
         """
-        Apply filters to the data
+        Apply filters to the data using pandas query operations
         """
         if self.data is None:
             raise ValueError("No data loaded")
+        
+        if not filters:
+            return self.data.copy()
 
         filtered_data = self.data.copy()
-
+        print(f"[DEBUG] Initial data shape: {filtered_data.shape}")
+        
         for filter_config in filters:
-            column = filter_config['column']
-            operator = filter_config['operator']
-            value = filter_config['value']
+            try:
+                column = filter_config.get('column')
+                operator = filter_config.get('operator')
+                value = filter_config.get('value')
 
-            if not column or not operator:
+                if not column or not operator or value is None or value == '':
+                    continue
+
+                print(f"[DEBUG] Applying filter: {column} {operator} {value}")
+                
+                # Handle different column types
+                if self.column_types.get(column) == 'numeric':
+                    # Convert column to numeric if it's not already
+                    filtered_data[column] = pd.to_numeric(filtered_data[column], errors='coerce')
+                    
+                    if isinstance(value, dict) and operator == 'between':
+                        try:
+                            min_val = float(value['min'])
+                            max_val = float(value['max'])
+                            mask = (filtered_data[column] >= min_val) & (filtered_data[column] <= max_val)
+                            filtered_data = filtered_data[mask]
+                            print(f"[DEBUG] Applied between filter: {min_val} <= {column} <= {max_val}")
+                            print(f"[DEBUG] Remaining rows: {len(filtered_data)}")
+                        except (ValueError, KeyError) as e:
+                            print(f"[ERROR] Invalid between values: {e}")
+                            continue
+                            
+                    elif isinstance(value, list) and operator == 'in':
+                        try:
+                            numeric_values = [float(v) for v in value if v.strip()]
+                            if numeric_values:
+                                filtered_data = filtered_data[filtered_data[column].isin(numeric_values)]
+                                print(f"[DEBUG] Applied in filter: {column} in {numeric_values}")
+                                print(f"[DEBUG] Remaining rows: {len(filtered_data)}")
+                        except ValueError as e:
+                            print(f"[ERROR] Invalid numeric values in list: {e}")
+                            continue
+                            
+                    else:
+                        try:
+                            numeric_value = float(value)
+                            if operator == '==':
+                                filtered_data = filtered_data[filtered_data[column] == numeric_value]
+                            elif operator == '!=':
+                                filtered_data = filtered_data[filtered_data[column] != numeric_value]
+                            elif operator == '>':
+                                filtered_data = filtered_data[filtered_data[column] > numeric_value]
+                            elif operator == '<':
+                                filtered_data = filtered_data[filtered_data[column] < numeric_value]
+                            elif operator == '>=':
+                                filtered_data = filtered_data[filtered_data[column] >= numeric_value]
+                            elif operator == '<=':
+                                filtered_data = filtered_data[filtered_data[column] <= numeric_value]
+                            print(f"[DEBUG] Applied numeric filter: {column} {operator} {numeric_value}")
+                            print(f"[DEBUG] Remaining rows: {len(filtered_data)}")
+                        except ValueError as e:
+                            print(f"[ERROR] Invalid numeric value: {e}")
+                            continue
+                
+                elif self.column_types.get(column) == 'datetime':
+                    try:
+                        if isinstance(value, dict) and operator == 'between':
+                            min_val = pd.to_datetime(value['min'])
+                            max_val = pd.to_datetime(value['max'])
+                            filtered_data = filtered_data[
+                                (filtered_data[column] >= min_val) & 
+                                (filtered_data[column] <= max_val)
+                            ]
+                        else:
+                            value = pd.to_datetime(value)
+                            if operator == '==':
+                                filtered_data = filtered_data[filtered_data[column] == value]
+                            elif operator == '!=':
+                                filtered_data = filtered_data[filtered_data[column] != value]
+                            elif operator == '>':
+                                filtered_data = filtered_data[filtered_data[column] > value]
+                            elif operator == '<':
+                                filtered_data = filtered_data[filtered_data[column] < value]
+                            elif operator == '>=':
+                                filtered_data = filtered_data[filtered_data[column] >= value]
+                            elif operator == '<=':
+                                filtered_data = filtered_data[filtered_data[column] <= value]
+                        print(f"[DEBUG] Applied datetime filter: {column} {operator} {value}")
+                        print(f"[DEBUG] Remaining rows: {len(filtered_data)}")
+                    except ValueError as e:
+                        print(f"[ERROR] Invalid datetime value: {e}")
+                        continue
+                
+                else:  # String/categorical
+                    try:
+                        if operator == 'contains':
+                            filtered_data = filtered_data[
+                                filtered_data[column].astype(str).str.contains(str(value), case=False, na=False)
+                            ]
+                        elif operator == 'starts_with':
+                            filtered_data = filtered_data[
+                                filtered_data[column].astype(str).str.startswith(str(value), na=False)
+                            ]
+                        elif operator == 'ends_with':
+                            filtered_data = filtered_data[
+                                filtered_data[column].astype(str).str.endswith(str(value), na=False)
+                            ]
+                        elif operator == 'in':
+                            if isinstance(value, str):
+                                value = [v.strip() for v in value.split(',') if v.strip()]
+                            if value:
+                                filtered_data = filtered_data[filtered_data[column].isin(value)]
+                        else:
+                            filtered_data = filtered_data[filtered_data[column] == value]
+                        print(f"[DEBUG] Applied string filter: {column} {operator} {value}")
+                        print(f"[DEBUG] Remaining rows: {len(filtered_data)}")
+                    except Exception as e:
+                        print(f"[ERROR] Error applying string filter: {e}")
+                        continue
+
+            except Exception as e:
+                print(f"[ERROR] Error applying filter for column {column}: {str(e)}")
                 continue
 
-            # Convert value to appropriate type based on column type
-            if self.column_types.get(column) == 'numeric':
-                try:
-                    value = float(value)
-                except (ValueError, TypeError):
-                    continue
-            elif self.column_types.get(column) == 'datetime':
-                try:
-                    value = pd.to_datetime(value)
-                except (ValueError, TypeError):
-                    continue
-
-            # Apply filter based on operator
-            if operator == '==':
-                filtered_data = filtered_data[filtered_data[column] == value]
-            elif operator == '!=':
-                filtered_data = filtered_data[filtered_data[column] != value]
-            elif operator == '>':
-                filtered_data = filtered_data[filtered_data[column] > value]
-            elif operator == '<':
-                filtered_data = filtered_data[filtered_data[column] < value]
-            elif operator == '>=':
-                filtered_data = filtered_data[filtered_data[column] >= value]
-            elif operator == '<=':
-                filtered_data = filtered_data[filtered_data[column] <= value]
-            elif operator == 'contains':
-                filtered_data = filtered_data[filtered_data[column].astype(str).str.contains(str(value), case=False)]
-
+        print(f"[DEBUG] Final filtered data shape: {filtered_data.shape}")
         return filtered_data
 
     def get_column_statistics(self, column: str) -> Dict[str, Any]:
@@ -126,37 +215,68 @@ class DataProcessingService:
 
         return stats
 
-    def get_data_for_visualization(self, x_axis, y_axis, category=None, filters=None):
+    def get_data_for_visualization(self, x_axis, y_axis, category=None, filters=None, group_by_x_axis=False, aggregation_method='avg'):
         """
         Get data for visualization based on selected columns and filters.
         Returns data in format suitable for chart.js
         """
-        print(f"[DEBUG] get_data_for_visualization called with: x_axis={x_axis}, y_axis={y_axis}, category={category}, filters={filters}")
+        print(f"[DEBUG] get_data_for_visualization called with: x_axis={x_axis}, y_axis={y_axis}, filters={filters}, group_by={group_by_x_axis}, agg_method={aggregation_method}")
         
-        # Apply filters if any
-        df = self.apply_filters(filters) if filters else self.data
-        print(f"[DEBUG] Data after applying filters:\n{df.head()}")
-        print(f"[DEBUG] Filtered data shape: {df.shape}")
-        
-        if category:  # If grouping is enabled
-            print(f"[DEBUG] Grouping by category (X-axis): {category}")
-            # Group by category and calculate mean of y_axis
-            grouped = df.groupby(category)[y_axis].mean()
-            print(f"[DEBUG] Grouped data (mean aggregation):\n{grouped.reset_index()}")
+        if self.data is None or len(self.data) == 0:
+            raise ValueError("No data available for visualization")
+
+        try:
+            # Apply filters first
+            df = self.apply_filters(filters) if filters else self.data.copy()
+            print(f"[DEBUG] Data after applying filters:\n{df.head()}")
+            print(f"[DEBUG] Filtered data shape: {df.shape}")
             
-            # Return grouped data for visualization
-            result = {
-                'x': grouped.index.tolist(),  # Use index for categories
-                'y': grouped.values.tolist()  # Use values for means
-            }
-            print(f"[DEBUG] Returning grouped data for visualization: {result}")
-            return result
-            
-        else:  # If no grouping
-            # Return raw data for visualization
-            result = {
-                'x': df[x_axis].tolist(),
-                'y': df[y_axis].tolist()
-            }
-            print(f"[DEBUG] Returning raw data for visualization: {result}")
-            return result 
+            if group_by_x_axis:
+                print(f"[DEBUG] Grouping by X-axis: {x_axis} with aggregation method: {aggregation_method}")
+                
+                # Convert numeric columns to float to handle potential mixed types
+                if self.column_types.get(y_axis) == 'numeric':
+                    df[y_axis] = pd.to_numeric(df[y_axis], errors='coerce')
+                
+                # Define aggregation function based on method
+                if aggregation_method == 'avg':
+                    grouped = df.groupby(x_axis, as_index=False)[y_axis].mean()
+                elif aggregation_method == 'sum':
+                    grouped = df.groupby(x_axis, as_index=False)[y_axis].sum()
+                elif aggregation_method == 'count':
+                    grouped = df.groupby(x_axis, as_index=False)[y_axis].count()
+                elif aggregation_method == 'min':
+                    grouped = df.groupby(x_axis, as_index=False)[y_axis].min()
+                elif aggregation_method == 'max':
+                    grouped = df.groupby(x_axis, as_index=False)[y_axis].max()
+                else:
+                    grouped = df.groupby(x_axis, as_index=False)[y_axis].mean()  # default to mean
+                
+                print(f"[DEBUG] Grouped data ({aggregation_method}):\n{grouped}")
+                
+                # Sort values for better visualization
+                grouped = grouped.sort_values(by=x_axis)
+                
+                # Return grouped data for visualization
+                result = {
+                    'x': grouped[x_axis].tolist(),
+                    'y': grouped[y_axis].tolist()
+                }
+                print(f"[DEBUG] Returning grouped data for visualization: {result}")
+                return result
+                
+            else:  # If no grouping
+                # Sort values for better visualization
+                df = df.sort_values(by=x_axis)
+                
+                # Return raw data for visualization
+                result = {
+                    'x': df[x_axis].tolist(),
+                    'y': df[y_axis].tolist()
+                }
+                print(f"[DEBUG] Returning raw data for visualization: {result}")
+                return result
+                
+        except Exception as e:
+            print(f"[ERROR] Error in get_data_for_visualization: {str(e)}")
+            raise ValueError(f"Error preparing visualization data: {str(e)}") 

@@ -97,41 +97,73 @@ def get_column_stats(request):
 def get_visualization_data(request):
     """
     API endpoint to get data for visualization based on selected columns and filters.
-    Expects POST data with x_axis, y_axis, category (optional), and filters (optional).
     """
     try:
         data = json.loads(request.body)
         x_axis = data.get('x_axis')
         y_axis = data.get('y_axis')
-        category = data.get('category', None)
+        group_by_x_axis = data.get('group_by_x_axis', False)
+        aggregation_method = data.get('aggregation_method', 'avg')
         filters = data.get('filters', [])
 
+        print(f"[DEBUG] Received request for visualization data:")
+        print(f"X-axis: {x_axis}")
+        print(f"Y-axis: {y_axis}")
+        print(f"Group by: {group_by_x_axis}")
+        print(f"Aggregation: {aggregation_method}")
+        print(f"Filters: {filters}")
+
         if not x_axis or not y_axis:
-            return JsonResponse({'status': 'error', 'message': 'X-axis and Y-axis columns are required.'}, status=400)
+            return JsonResponse({
+                'status': 'error',
+                'message': 'X-axis and Y-axis columns are required.'
+            }, status=400)
 
         try:
-            visualization_data = data_service.get_data_for_visualization(x_axis, y_axis, category, filters)
-            print(f"[DEBUG] Data prepared for visualization: {visualization_data}")
-            return JsonResponse({'status': 'success', 'data': visualization_data})
+            # Get visualization data with filters and grouping
+            visualization_data = data_service.get_data_for_visualization(
+                x_axis=x_axis,
+                y_axis=y_axis,
+                filters=filters,
+                group_by_x_axis=group_by_x_axis,
+                aggregation_method=aggregation_method
+            )
+            
+            # Get a preview of the filtered data
+            filtered_data = data_service.apply_filters(filters)
+            preview_data = filtered_data.head(5).to_dict(orient='records')
+            
+            print(f"[DEBUG] Visualization data prepared:")
+            print(f"Data points: {len(visualization_data['x'])}")
+            print(f"Preview rows: {len(preview_data)}")
+            
+            return JsonResponse({
+                'status': 'success',
+                'data': {
+                    **visualization_data,
+                    'preview': preview_data,
+                    'total_rows': len(filtered_data)
+                }
+            })
 
         except ValueError as e:
             print(f"[ERROR] Error in get_data_for_visualization: {e}")
-            return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
-
-        except TypeError as e: # Catch potential JSON serialization errors
-            print(f"[ERROR] JSON Serialization Error in get_visualization_data: {e}")
-            # Log the data that failed to serialize for further inspection
-            try:
-                 print(f"[ERROR] Data that failed to serialize: {visualization_data}")
-            except Exception as log_e:
-                 print(f"[ERROR] Could not log visualization_data for serialization error: {log_e}")
-            return JsonResponse({'status': 'error', 'message': f'Server error preparing visualization data (serialization issue): {e}'}, status=400)
+            return JsonResponse({
+                'status': 'error',
+                'message': str(e)
+            }, status=400)
 
     except json.JSONDecodeError:
-        return JsonResponse({'status': 'error', 'message': 'Invalid JSON.'}, status=400)
+        return JsonResponse({
+            'status': 'error',
+            'message': 'Invalid JSON.'
+        }, status=400)
     except Exception as e:
         print(f"[ERROR] An unexpected error occurred in get_visualization_data: {e}")
-        return JsonResponse({'status': 'error', 'message': 'An unexpected server error occurred.'}, status=500)
+        return JsonResponse({
+            'status': 'error',
+            'message': f'An unexpected server error occurred: {str(e)}'
+        }, status=500)
 
 @csrf_exempt
 @require_http_methods(["POST"])
@@ -327,6 +359,47 @@ def get_saved_files(request):
             'data': files_list
         })
 
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e)
+        }, status=500)
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def delete_saved_file(request):
+    """Delete a saved file from MongoDB"""
+    try:
+        if not request.user.is_authenticated:
+            return JsonResponse({
+                'status': 'error',
+                'message': 'User must be authenticated'
+            }, status=401)
+
+        data = json.loads(request.body)
+        file_id = data.get('file_id')
+
+        if not file_id:
+            return JsonResponse({
+                'status': 'error',
+                'message': 'File ID is required'
+            }, status=400)
+            
+        # Get and delete the file
+        user_file = UserFile.objects.get(id=file_id, user_id=request.user.id)
+        filename = user_file.filename  # Store filename before deletion
+        user_file.delete()
+        
+        return JsonResponse({
+            'status': 'success',
+            'message': f'File "{filename}" deleted successfully'
+        })
+        
+    except UserFile.DoesNotExist:
+        return JsonResponse({
+            'status': 'error',
+            'message': 'File not found'
+        }, status=404)
     except Exception as e:
         return JsonResponse({
             'status': 'error',
