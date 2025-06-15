@@ -22,6 +22,7 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('auth/', include('authentication.urls')),
     path('business/', include('BuisInt.urls')),
+    path('forecasting/', include('forecasting.urls')),
     # Handle Chrome DevTools request
     path('.well-known/appspecific/com.chrome.devtools.json', 
          TemplateView.as_view(template_name='empty.json'), 
