@@ -433,10 +433,10 @@ container-fluid h-100 px-0 py-0
             </div>
             <div>
                 {# Actions like Download, Run #}
-                <button id="run-button" class="btn btn-primary me-2"><i class="fas fa-play"></i> Run</button>
+                <!-- <button id="run-button" class="btn btn-primary me-2"><i class="fas fa-play"></i> Run</button> -->
                 <button id="forecasting-button" class="btn btn-success me-2"><i class="fas fa-chart-line"></i> Forecasting</button>
-                <button class="btn btn-secondary me-2"><i class="fas fa-download"></i> Download</button>
-                <button id="saveFileBtn" class="btn btn-success me-2"><i class="fas fa-save"></i> Save</button>
+                <!-- <button class="btn btn-secondary me-2"><i class="fas fa-download"></i> Download</button> -->
+                <!-- <button id="saveFileBtn" class="btn btn-success me-2"><i class="fas fa-save"></i> Save</button> -->
                 {# More action buttons like View, Add to Dashboard #}
             </div>
         </div>
@@ -1698,84 +1698,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Function to update saved files list
-    async function updateSavedFilesList() {
-        console.log('Updating saved files list...');
-        if (!savedFilesContent) {
-            console.error('savedFilesContent element not found!');
-            return;
-        }
-
-        try {
-            savedFilesContent.innerHTML = '<div class="dropdown-item text-center text-muted py-2">Loading...</div>';
-            
-            const response = await fetch('/business/api/get-saved-files/');
-            const result = await response.json();
-            console.log('Saved files API response:', result);
-
-            if (result.status === 'success') {
-                const files = result.data;
-                savedFilesContent.innerHTML = '';
-
-                if (savedFilesCount) {
-                    savedFilesCount.textContent = files.length;
-                }
-
-                if (files.length === 0) {
-                    savedFilesContent.innerHTML = `
-                        <div class="dropdown-item text-center text-muted py-2">No saved files</div>
-                    `;
-                    return;
-                }
-
-                const filesList = document.createElement('div');
-                files.forEach((file, index) => {
-                    const fileItem = document.createElement('div');
-                    fileItem.className = 'saved-file-item';
-                    fileItem.innerHTML = `
-                        <div class="d-flex justify-content-between align-items-start">
-                            <div class="flex-grow-1" style="cursor: pointer;" onclick="handleLoadFile('${file.id}', '${file.filename}')">
-                                <div class="fw-medium">${file.filename}</div>
-                                <small class="text-muted d-block">${file.description || 'No description'}</small>
-                                <small class="text-muted">${new Date(file.upload_date).toLocaleString()}</small>
-                            </div>
-                            <div class="d-flex align-items-start">
-                                <span class="badge bg-info me-2">${Object.keys(file.column_types).length} cols</span>
-                                <button class="btn btn-link btn-sm p-0 delete-btn" onclick="handleDeleteFile(event, '${file.id}', '${file.filename}')" title="Delete file">
-                                    <i class="fas fa-trash-alt text-danger"></i>
-                                </button>
-                            </div>
-                        </div>
-                    `;
-                    
-                    fileItem.addEventListener('click', function(e) {
-                        e.preventDefault();
-                        handleLoadFile(file.id, file.filename);
-                        toggleDropdown(false);
-                    });
-                    
-                    filesList.appendChild(fileItem);
-
-                    if (index < files.length - 1) {
-                        const divider = document.createElement('div');
-                        divider.className = 'dropdown-divider';
-                        filesList.appendChild(divider);
-                    }
-                });
-                
-                savedFilesContent.appendChild(filesList);
-            } else {
-                throw new Error(result.message || 'Failed to load saved files');
-            }
-        } catch (error) {
-            console.error('Error loading saved files:', error);
-            savedFilesContent.innerHTML = `
-                <div class="dropdown-item text-center text-danger py-2">Error loading files</div>
-            `;
-            showToast('Error loading saved files: ' + error.message, 'danger');
-        }
-    }
-
     // Initial load of saved files count
     updateSavedFilesList();
 });
@@ -1914,15 +1836,365 @@ async function handleDeleteFile(event, fileId, filename) {
         const result = await response.json();
         
         if (result.status === 'success') {
-            showToast(result.message, 'success');
-            // Refresh the files list
-            updateSavedFilesList();
+            showToast(`File "${filename}" deleted successfully`, 'success');
+            // Update the saved files list
+            await updateSavedFilesList();
         } else {
             throw new Error(result.message || 'Failed to delete file');
         }
     } catch (error) {
         console.error('Error deleting file:', error);
         showToast('Error deleting file: ' + error.message, 'danger');
+    }
+}
+
+// Initialize forecasting functionality
+document.addEventListener('DOMContentLoaded', function() {
+    const forecastingBtn = document.getElementById('forecasting-button');
+    const forecastingModal = document.getElementById('forecastingModal');
+    const forecastingForm = document.getElementById('forecastingForm');
+    const generateForecastBtn = document.getElementById('generateForecastBtn');
+
+    // Add click handler for forecasting button
+    if (forecastingBtn) {
+        forecastingBtn.addEventListener('click', function() {
+            // Show the forecasting modal
+            const modal = new bootstrap.Modal(forecastingModal);
+            modal.show();
+
+            // Populate column selectors
+            populateColumnSelectors();
+        });
+    }
+
+    // Add click handler for generate forecast button
+    if (generateForecastBtn) {
+        generateForecastBtn.addEventListener('click', async function() {
+            if (!forecastingForm.checkValidity()) {
+                forecastingForm.reportValidity();
+                return;
+            }
+
+            const dateColumn = document.getElementById('dateColumn').value;
+            const targetColumn = document.getElementById('targetColumn').value;
+            const forecastMethod = document.getElementById('forecastMethod').value;
+            const forecastPeriod = parseInt(document.getElementById('forecastPeriod').value);
+            const showConfidenceInterval = document.getElementById('showConfidenceInterval').checked;
+
+            if (!dateColumn || !targetColumn) {
+                showToast('Please select date and target columns', 'warning');
+                return;
+            }
+
+            try {
+                const response = await fetch('/forecasting/api/generate-forecast/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    },
+                    body: JSON.stringify({
+                        date_column: dateColumn,
+                        target_column: targetColumn,
+                        method: forecastMethod,
+                        period: forecastPeriod,
+                        show_confidence_interval: showConfidenceInterval,
+                        parameters: getMethodParameters(forecastMethod)
+                    })
+                });
+
+                const result = await response.json();
+
+                if (result.status === 'success') {
+                    // Close the modal
+                    const modal = bootstrap.Modal.getInstance(forecastingModal);
+                    modal.hide();
+
+                    // Clear the form
+                    forecastingForm.reset();
+
+                    // Show success message
+                    showToast('Forecast generated successfully!', 'success');
+
+                    // Update the forecast chart
+                    updateForecastChart(result.data);
+                } else {
+                    throw new Error(result.message || 'Failed to generate forecast');
+                }
+            } catch (error) {
+                console.error('Error generating forecast:', error);
+                showToast('Error generating forecast: ' + error.message, 'danger');
+            }
+        });
+    }
+
+    // Function to get method-specific parameters
+    function getMethodParameters(method) {
+        const parameters = {};
+        switch (method) {
+            case 'lstm':
+                parameters.sequence_length = 10;
+                parameters.epochs = 50;
+                break;
+            case 'arima':
+                parameters.p = 1;
+                parameters.d = 1;
+                parameters.q = 1;
+                break;
+            case 'prophet':
+                parameters.growth = 'linear';
+                parameters.seasonality_mode = 'additive';
+                break;
+        }
+        return parameters;
+    }
+
+    // Function to populate column selectors
+    function populateColumnSelectors() {
+        const dateSelect = document.getElementById('dateColumn');
+        const targetSelect = document.getElementById('targetColumn');
+        const productSelect = document.getElementById('productColumn');
+        const exogenousContainer = document.getElementById('exogenousCheckboxes');
+
+        if (!window.availableColumns) {
+            console.error('No columns available');
+            return;
+        }
+
+        // Clear existing options
+        dateSelect.innerHTML = '<option value="">Select date column</option>';
+        targetSelect.innerHTML = '<option value="">Select target column</option>';
+        productSelect.innerHTML = '<option value="">Select product column</option>';
+        exogenousContainer.innerHTML = '';
+
+        // Add options for each column
+        window.availableColumns.forEach(col => {
+            // Add to date select (only datetime columns)
+            if (col.type === 'datetime') {
+                dateSelect.add(new Option(col.name, col.name));
+            }
+
+            // Add to target select (only numeric columns)
+            if (col.type === 'numeric') {
+                targetSelect.add(new Option(col.name, col.name));
+            }
+
+            // Add to product select (all columns)
+            productSelect.add(new Option(col.name, col.name));
+
+            // Add to exogenous variables (numeric columns except target)
+            if (col.type === 'numeric') {
+                const div = document.createElement('div');
+                div.className = 'form-check';
+                div.innerHTML = `
+                    <input class="form-check-input" type="checkbox" value="${col.name}" id="exog_${col.name}">
+                    <label class="form-check-label" for="exog_${col.name}">
+                        ${col.name}
+                    </label>
+                `;
+                exogenousContainer.appendChild(div);
+            }
+        });
+    }
+});
+
+// Function to update the forecast chart
+function updateForecastChart(data) {
+    const chartContainer = document.getElementById('forecastResults');
+    const chartCanvas = document.getElementById('forecastChart');
+    const metricsContainer = document.getElementById('modelMetrics');
+
+    // Show the results area
+    chartContainer.style.display = 'block';
+
+    // Clear existing chart if any
+    if (window.forecastChart) {
+        window.forecastChart.destroy();
+    }
+
+    // Create the chart
+    const ctx = chartCanvas.getContext('2d');
+    window.forecastChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: data.dates,
+            datasets: [
+                {
+                    label: 'Historical',
+                    data: data.historical,
+                    borderColor: '#2196F3',
+                    backgroundColor: 'rgba(33, 150, 243, 0.1)',
+                    fill: true
+                },
+                {
+                    label: 'Forecast',
+                    data: data.forecast,
+                    borderColor: '#4CAF50',
+                    backgroundColor: 'rgba(76, 175, 80, 0.1)',
+                    fill: true
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                title: {
+                    display: true,
+                    text: 'Forecast Results'
+                },
+                tooltip: {
+                    mode: 'index',
+                    intersect: false
+                }
+            },
+            hover: {
+                mode: 'nearest',
+                intersect: true
+            },
+            scales: {
+                x: {
+                    display: true,
+                    title: {
+                        display: true,
+                        text: 'Date'
+                    }
+                },
+                y: {
+                    display: true,
+                    title: {
+                        display: true,
+                        text: 'Value'
+                    }
+                }
+            }
+        }
+    });
+
+    // Add confidence intervals if available
+    if (data.confidence_intervals) {
+        window.forecastChart.data.datasets.push({
+            label: 'Upper Bound',
+            data: data.confidence_intervals.upper,
+            borderColor: 'rgba(144, 202, 249, 0.5)',
+            borderDash: [5, 5],
+            fill: false
+        });
+        window.forecastChart.data.datasets.push({
+            label: 'Lower Bound',
+            data: data.confidence_intervals.lower,
+            borderColor: 'rgba(144, 202, 249, 0.5)',
+            borderDash: [5, 5],
+            fill: '-1'
+        });
+        window.forecastChart.update();
+    }
+
+    // Update metrics if available
+    if (data.metrics) {
+        const metrics = data.metrics;
+        metricsContainer.innerHTML = `
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-body">
+                        <h6 class="card-subtitle mb-2 text-muted">MAE</h6>
+                        <h4 class="card-title">${metrics.mae.toFixed(4)}</h4>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-body">
+                        <h6 class="card-subtitle mb-2 text-muted">MSE</h6>
+                        <h4 class="card-title">${metrics.mse.toFixed(4)}</h4>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-body">
+                        <h6 class="card-subtitle mb-2 text-muted">RMSE</h6>
+                        <h4 class="card-title">${metrics.rmse.toFixed(4)}</h4>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+}
+
+// ... rest of your existing JavaScript code ...
+
+// Function to update saved files list
+async function updateSavedFilesList() {
+    console.log('Updating saved files list...');
+    const savedFilesContent = document.getElementById('savedFilesContent');
+    const savedFilesCount = document.getElementById('savedFilesCount');
+    
+    if (!savedFilesContent) {
+        console.error('savedFilesContent element not found!');
+        return;
+    }
+
+    try {
+        savedFilesContent.innerHTML = '<div class="dropdown-item text-center text-muted py-2">Loading...</div>';
+        
+        const response = await fetch('/business/api/get-saved-files/');
+        const result = await response.json();
+        console.log('Saved files API response:', result);
+
+        if (result.status === 'success') {
+            const files = result.data;
+            savedFilesContent.innerHTML = '';
+
+            if (savedFilesCount) {
+                savedFilesCount.textContent = files.length;
+            }
+
+            if (files.length === 0) {
+                savedFilesContent.innerHTML = `
+                    <div class="dropdown-item text-center text-muted py-2">No saved files</div>
+                `;
+                return;
+            }
+
+            const filesList = document.createElement('div');
+            files.forEach((file, index) => {
+                const fileItem = document.createElement('div');
+                fileItem.className = 'saved-file-item';
+                fileItem.innerHTML = `
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div class="flex-grow-1" style="cursor: pointer;" onclick="handleLoadFile('${file.id}', '${file.filename}')">
+                            <div class="fw-medium">${file.filename}</div>
+                            <small class="text-muted d-block">${file.description || 'No description'}</small>
+                            <small class="text-muted">${new Date(file.upload_date).toLocaleString()}</small>
+                        </div>
+                        <div class="d-flex align-items-start">
+                            <span class="badge bg-info me-2">${Object.keys(file.column_types).length} cols</span>
+                            <button class="btn btn-link btn-sm p-0 delete-btn" onclick="handleDeleteFile(event, '${file.id}', '${file.filename}')" title="Delete file">
+                                <i class="fas fa-trash-alt text-danger"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+                
+                filesList.appendChild(fileItem);
+
+                if (index < files.length - 1) {
+                    const divider = document.createElement('div');
+                    divider.className = 'dropdown-divider';
+                    filesList.appendChild(divider);
+                }
+            });
+            
+            savedFilesContent.appendChild(filesList);
+        } else {
+            throw new Error(result.message || 'Failed to load saved files');
+        }
+    } catch (error) {
+        console.error('Error loading saved files:', error);
+        savedFilesContent.innerHTML = `
+            <div class="dropdown-item text-center text-danger py-2">Error loading files</div>
+        `;
     }
 }
 </script>
