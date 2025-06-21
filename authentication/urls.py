@@ -9,7 +9,6 @@ from .views import (
     register_view,
     logout_view,
     password_reset_view,
-    home_view,
     profile_view,
     change_password_view,
     verify_email_view,
@@ -19,9 +18,6 @@ from .views import (
 )
 
 urlpatterns = [
-    # Home page
-    path('', home_view, name='home'),
-    
     # Template-based URLs
     path('login/', login_view, name='login'),
     path('register/', register_view, name='register'),

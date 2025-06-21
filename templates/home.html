@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 
-{% block title %}Home{% endblock %}
+{% block title %}Smart-Buiz - Home{% endblock %}
 
 {% block content %}
 <div class="container">
@@ -8,7 +8,7 @@
         <div class="col-md-8">
             <div class="card shadow-sm">
                 <div class="card-body text-center">
-                    <h1 class="card-title mb-4">Welcome to Authentication System</h1>
+                    <h1 class="card-title mb-4">Welcome to Smart-Buiz</h1>
                     {% if user.is_authenticated %}
                         <p class="lead">Hello, {{ user.username }}!</p>
                         <p>Your email: {{ user.email }}</p>

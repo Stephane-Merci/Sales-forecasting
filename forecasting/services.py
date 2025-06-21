@@ -39,11 +39,25 @@ class ForecastingService:
             except Exception as e:
                 return False, f"Invalid date format in column '{date_column}': {str(e)}"
 
-            # Check target column
+            # Check target column - must be numeric for forecasting
             try:
-                df[target_column] = pd.to_numeric(df[target_column])
+                # First check if the column contains any non-numeric values
+                sample_values = df[target_column].dropna().head(10).tolist()
+                non_numeric_values = []
+                for value in sample_values:
+                    try:
+                        float(value)
+                    except (ValueError, TypeError):
+                        non_numeric_values.append(str(value))
+                
+                if non_numeric_values:
+                    return False, f"Target column '{target_column}' contains non-numeric values: {non_numeric_values[:3]}. Please select a numeric column for forecasting."
+                
+                # Try to convert the entire column
+                df[target_column] = pd.to_numeric(df[target_column], errors='raise')
+                
             except Exception as e:
-                return False, f"Invalid numeric format in column '{target_column}': {str(e)}"
+                return False, f"Target column '{target_column}' must contain only numeric values for forecasting. Found non-numeric data: {str(e)}"
 
             # Check for missing values
             if df[date_column].isnull().any():
@@ -67,26 +81,70 @@ class ForecastingService:
 
     def prepare_data(self, data: List[Dict], date_column: str, target_column: str) -> pd.DataFrame:
         """Prepare data for forecasting with enhanced preprocessing"""
-        df = pd.DataFrame(data)
-        df[date_column] = pd.to_datetime(df[date_column])
-        df = df.sort_values(date_column)
-        
-        # Ensure data is complete and continuous
-        date_range = pd.date_range(start=df[date_column].min(), end=df[date_column].max(), freq='D')
-        df = df.set_index(date_column).reindex(date_range).reset_index()
-        df = df.rename(columns={'index': date_column})
-        
-        # Handle missing values
-        df[target_column] = df[target_column].interpolate(method='linear')
-        
-        # Remove outliers (using IQR method)
-        Q1 = df[target_column].quantile(0.25)
-        Q3 = df[target_column].quantile(0.75)
-        IQR = Q3 - Q1
-        df.loc[df[target_column] < (Q1 - 1.5 * IQR), target_column] = Q1
-        df.loc[df[target_column] > (Q3 + 1.5 * IQR), target_column] = Q3
-        
-        return df
+        try:
+            df = pd.DataFrame(data)
+            
+            # Ensure date column is properly formatted
+            try:
+                # First try parsing as is
+                df[date_column] = pd.to_datetime(df[date_column])
+            except Exception as e:
+                logger.error(f"Error parsing dates: {str(e)}")
+                # If that fails, try common formats
+                for format in ['%Y-%m-%d', '%d/%m/%Y', '%Y/%m/%d', '%d-%m-%Y', '%m/%d/%Y']:
+                    try:
+                        df[date_column] = pd.to_datetime(df[date_column], format=format)
+                        break
+                    except:
+                        continue
+                
+                if not pd.api.types.is_datetime64_any_dtype(df[date_column]):
+                    raise ValueError(f"Unable to parse dates in column {date_column}")
+
+            # Sort by date
+            df = df.sort_values(date_column)
+            
+            # Ensure target column is numeric - be strict about this
+            try:
+                # First check for non-numeric values
+                non_numeric_mask = pd.to_numeric(df[target_column], errors='coerce').isna()
+                if non_numeric_mask.any():
+                    non_numeric_values = df.loc[non_numeric_mask, target_column].unique()[:5]
+                    raise ValueError(f"Target column '{target_column}' contains non-numeric values: {list(non_numeric_values)}")
+                
+                df[target_column] = pd.to_numeric(df[target_column], errors='raise')
+            except Exception as e:
+                raise ValueError(f"Cannot convert target column '{target_column}' to numeric: {str(e)}")
+            
+            # Remove any rows with NaN values
+            df = df.dropna(subset=[date_column, target_column])
+            
+            # Ensure data is complete and continuous
+            date_range = pd.date_range(start=df[date_column].min(), end=df[date_column].max(), freq='D')
+            df = df.set_index(date_column).reindex(date_range).reset_index()
+            df = df.rename(columns={'index': date_column})
+            
+            # Handle missing values
+            df[target_column] = df[target_column].interpolate(method='linear')
+            
+            # Remove outliers (using IQR method)
+            Q1 = df[target_column].quantile(0.25)
+            Q3 = df[target_column].quantile(0.75)
+            IQR = Q3 - Q1
+            df.loc[df[target_column] < (Q1 - 1.5 * IQR), target_column] = Q1
+            df.loc[df[target_column] > (Q3 + 1.5 * IQR), target_column] = Q3
+            
+            # Standardize column names for internal processing
+            df = df.rename(columns={
+                date_column: 'Date',
+                target_column: 'Value'
+            })
+            
+            return df
+            
+        except Exception as e:
+            logger.error(f"Error in prepare_data: {str(e)}")
+            raise ValueError(f"Error preparing data: {str(e)}")
 
     def evaluate_model(self, y_true: np.ndarray, y_pred: np.ndarray) -> Dict[str, float]:
         """Calculate comprehensive model evaluation metrics"""
@@ -131,7 +189,7 @@ class ForecastingService:
 
     def lstm_forecast(self, data: List[Dict], date_column: str, target_column: str, 
                      forecast_period: int, parameters: Dict[str, Any]) -> Dict[str, Any]:
-        """Generate forecast using LSTM with enhanced features"""
+        """Generate forecast using LSTM"""
         try:
             # Validate data
             is_valid, message = self.validate_data(data, date_column, target_column)
@@ -140,7 +198,9 @@ class ForecastingService:
 
             # Prepare data
             df = self.prepare_data(data, date_column, target_column)
-            values = df[target_column].values.reshape(-1, 1)
+            
+            # At this point, df has standardized column names 'Date' and 'Value'
+            values = df['Value'].values.reshape(-1, 1)
             scaled_values = self.scaler.fit_transform(values)
 
             # Create sequences
@@ -170,75 +230,82 @@ class ForecastingService:
             optimizer = tf.keras.optimizers.Adam(learning_rate=lr_schedule)
             model.compile(optimizer=optimizer, loss='mse')
 
-            # Train with early stopping and validation split
-            epochs = parameters.get('epochs', 50)
+            # Train model with early stopping
             early_stopping = tf.keras.callbacks.EarlyStopping(
-                monitor='val_loss', patience=5, restore_best_weights=True
+                monitor='val_loss',
+                patience=10,
+                restore_best_weights=True
             )
-            history = model.fit(
+
+            model.fit(
                 X_train, y_train,
-                epochs=epochs,
+                epochs=100,
                 batch_size=32,
                 validation_split=0.2,
                 callbacks=[early_stopping],
                 verbose=0
             )
 
-            # Generate forecast with confidence intervals
-            last_sequence = scaled_values[-seq_length:]
-            forecast_values = []
-            lower_bound = []
-            upper_bound = []
+            # Generate future dates
+            last_date = pd.to_datetime(df['Date'].iloc[-1])
+            future_dates = pd.date_range(
+                start=last_date + pd.Timedelta(days=1),
+                periods=forecast_period,
+                freq='D'
+            )
 
+            # Prepare input sequence for forecasting
+            input_sequence = scaled_values[-seq_length:]
+
+            # Generate forecasts
+            forecasts = []
             for _ in range(forecast_period):
-                # Generate multiple predictions with dropout enabled
-                predictions = []
-                for _ in range(100):  # Monte Carlo iterations
-                    pred = model.predict(last_sequence.reshape(1, seq_length, 1), verbose=0)
-                    predictions.append(pred[0, 0])
-                
-                # Calculate mean and confidence intervals
-                mean_pred = np.mean(predictions)
-                std_pred = np.std(predictions)
-                forecast_values.append(mean_pred)
-                lower_bound.append(mean_pred - 1.96 * std_pred)
-                upper_bound.append(mean_pred + 1.96 * std_pred)
-                
-                # Update sequence
-                last_sequence = np.roll(last_sequence, -1)
-                last_sequence[-1] = mean_pred
+                # Reshape input sequence for prediction
+                X_pred = input_sequence.reshape(1, seq_length, 1)
+                # Get prediction
+                y_pred = model.predict(X_pred, verbose=0)
+                # Append prediction to forecasts
+                forecasts.append(y_pred[0, 0])
+                # Update input sequence
+                input_sequence = np.roll(input_sequence, -1)
+                input_sequence[-1] = y_pred
 
-            # Inverse transform
-            forecast_values = np.array(forecast_values).reshape(-1, 1)
-            lower_bound = np.array(lower_bound).reshape(-1, 1)
-            upper_bound = np.array(upper_bound).reshape(-1, 1)
-            
-            forecast_values = self.scaler.inverse_transform(forecast_values)
-            lower_bound = self.scaler.inverse_transform(lower_bound)
-            upper_bound = self.scaler.inverse_transform(upper_bound)
+            # Inverse transform the forecasts
+            forecasts = self.scaler.inverse_transform(np.array(forecasts).reshape(-1, 1))
 
-            # Calculate metrics
-            y_pred = model.predict(X_test, verbose=0)
-            y_pred = self.scaler.inverse_transform(y_pred)
-            y_test_actual = self.scaler.inverse_transform(y_test)
-            
-            metrics = self.evaluate_model(y_test_actual, y_pred)
-            
-            # Generate forecast dates
-            last_date = df[date_column].max()
-            forecast_dates = pd.date_range(start=last_date + timedelta(days=1), periods=forecast_period)
+            # Calculate metrics using the test set
+            y_pred_test = model.predict(X_test, verbose=0)
+            y_pred_test = self.scaler.inverse_transform(y_pred_test)
+            y_test_actual = self.scaler.inverse_transform(y_test.reshape(-1, 1))
+            metrics = self.evaluate_model(y_test_actual, y_pred_test)
+
+            # Calculate confidence intervals (using prediction std as a simple approach)
+            std = np.std(y_test_actual - y_pred_test)
+            confidence_intervals = {
+                'lower': forecasts - 1.96 * std,
+                'upper': forecasts + 1.96 * std
+            }
+
+            # Format the results
+            forecast_data = [{
+                'date': date.strftime('%Y-%m-%d'),
+                'forecast': float(forecast),
+                'lower_bound': float(lower),
+                'upper_bound': float(upper)
+            } for date, forecast, lower, upper in zip(
+                future_dates,
+                forecasts.flatten(),
+                confidence_intervals['lower'].flatten(),
+                confidence_intervals['upper'].flatten()
+            )]
 
             return {
-                'forecast': forecast_values.flatten().tolist(),
-                'dates': forecast_dates.strftime('%Y-%m-%d').tolist(),
+                'forecast': forecast_data,
+                'dates': [d.strftime('%Y-%m-%d') for d in future_dates],
                 'metrics': metrics,
                 'confidence_intervals': {
-                    'lower': lower_bound.flatten().tolist(),
-                    'upper': upper_bound.flatten().tolist()
-                },
-                'training_history': {
-                    'loss': history.history['loss'],
-                    'val_loss': history.history['val_loss']
+                    'lower': confidence_intervals['lower'].flatten().tolist(),
+                    'upper': confidence_intervals['upper'].flatten().tolist()
                 }
             }
 
@@ -248,7 +315,7 @@ class ForecastingService:
 
     def arima_forecast(self, data: List[Dict], date_column: str, target_column: str, 
                       forecast_period: int, parameters: Dict[str, Any]) -> Dict[str, Any]:
-        """Generate forecast using ARIMA with enhanced features"""
+        """Generate forecast using ARIMA"""
         try:
             # Validate data
             is_valid, message = self.validate_data(data, date_column, target_column)
@@ -257,48 +324,53 @@ class ForecastingService:
 
             # Prepare data
             df = self.prepare_data(data, date_column, target_column)
-            values = df[target_column].values
-
-            # Get ARIMA parameters
-            p = parameters.get('p', 1)
-            d = parameters.get('d', 1)
-            q = parameters.get('q', 1)
-
-            # Fit ARIMA model with automatic order selection if not specified
-            if all(v == 0 for v in [p, d, q]):
-                from pmdarima import auto_arima
-                model = auto_arima(values, seasonal=True, stepwise=True)
-                p, d, q = model.order
-            else:
-                model = ARIMA(values, order=(p, d, q))
-                model = model.fit()
-
-            # Generate forecast with confidence intervals
-            forecast = model.forecast(steps=forecast_period)
-            conf_int = model.get_forecast(steps=forecast_period).conf_int()
             
-            # Calculate metrics
-            train_size = int(len(values) * 0.8)
-            train, test = values[:train_size], values[train_size:]
-            predictions = model.predict(start=train_size, end=len(values)-1)
-            metrics = self.evaluate_model(test, predictions)
+            # At this point, df has standardized column names 'Date' and 'Value'
+            values = df['Value'].values
 
-            # Generate forecast dates
-            last_date = df[date_column].max()
-            forecast_dates = pd.date_range(start=last_date + timedelta(days=1), periods=forecast_period)
+            # Fit ARIMA model with parameters
+            p = parameters.get('p', 1)
+            d = parameters.get('d', 1) 
+            q = parameters.get('q', 1)
+            model = ARIMA(values, order=(p, d, q))
+            model_fit = model.fit()
+
+            # Generate forecast
+            forecast = model_fit.forecast(steps=forecast_period)
+            
+            # Calculate confidence intervals
+            conf_int = model_fit.get_forecast(steps=forecast_period).conf_int()
+            lower = conf_int[:, 0]
+            upper = conf_int[:, 1]
+
+            # Generate future dates
+            last_date = pd.to_datetime(df['Date'].iloc[-1])
+            future_dates = pd.date_range(
+                start=last_date + pd.Timedelta(days=1),
+                periods=forecast_period,
+                freq='D'
+            )
+
+            # Calculate metrics
+            train_pred = model_fit.get_prediction(0)
+            y_pred = train_pred.predicted_mean
+            metrics = self.evaluate_model(values, y_pred)
+
+            # Format the results
+            forecast_data = [{
+                'date': date.strftime('%Y-%m-%d'),
+                'forecast': float(forecast[i]),
+                'lower_bound': float(lower[i]),
+                'upper_bound': float(upper[i])
+            } for i, date in enumerate(future_dates)]
 
             return {
-                'forecast': forecast.tolist(),
-                'dates': forecast_dates.strftime('%Y-%m-%d').tolist(),
+                'forecast': forecast_data,
+                'dates': [d.strftime('%Y-%m-%d') for d in future_dates],
                 'metrics': metrics,
                 'confidence_intervals': {
-                    'lower': conf_int[:, 0].tolist(),
-                    'upper': conf_int[:, 1].tolist()
-                },
-                'model_params': {
-                    'p': p, 'd': d, 'q': q,
-                    'aic': model.aic,
-                    'bic': model.bic
+                    'lower': lower.tolist(),
+                    'upper': upper.tolist()
                 }
             }
 
@@ -317,11 +389,12 @@ class ForecastingService:
 
             # Prepare data
             df = self.prepare_data(data, date_column, target_column)
-            prophet_df = df.rename(columns={date_column: 'ds', target_column: 'y'})
+            # Note: prepare_data standardizes column names to 'Date' and 'Value'
+            prophet_df = df.rename(columns={'Date': 'ds', 'Value': 'y'})
 
             # Add additional regressors if available
             for col in df.columns:
-                if col not in [date_column, target_column] and np.issubdtype(df[col].dtype, np.number):
+                if col not in ['Date', 'Value'] and np.issubdtype(df[col].dtype, np.number):
                     prophet_df[col] = df[col]
 
             # Initialize and fit Prophet model with additional parameters
@@ -403,33 +476,19 @@ class ForecastingService:
     def generate_forecast(self, data: List[Dict], method: str, date_column: str, 
                         target_column: str, forecast_period: int, 
                         parameters: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
-        """Main method to generate forecasts using specified method with validation"""
+        """Generate forecast using specified method"""
         try:
-            # Validate parameters
             if parameters is None:
                 parameters = {}
 
-            if method not in ['lstm', 'arima', 'prophet']:
+            if method == 'lstm':
+                return self.lstm_forecast(data, date_column, target_column, forecast_period, parameters)
+            elif method == 'arima':
+                return self.arima_forecast(data, date_column, target_column, forecast_period, parameters)
+            elif method == 'prophet':
+                return self.prophet_forecast(data, date_column, target_column, forecast_period, parameters)
+            else:
                 raise ValueError(f"Unsupported forecasting method: {method}")
-
-            if forecast_period < 1 or forecast_period > 365:
-                raise ValueError("Forecast period must be between 1 and 365 days")
-
-            # Map methods to functions
-            method_map = {
-                'lstm': self.lstm_forecast,
-                'arima': self.arima_forecast,
-                'prophet': self.prophet_forecast
-            }
-
-            # Generate forecast
-            forecast_func = method_map[method]
-            result = forecast_func(data, date_column, target_column, forecast_period, parameters)
-
-            # Log success
-            logger.info(f"Successfully generated {method} forecast for {target_column}")
-
-            return result
 
         except Exception as e:
             logger.error(f"Error generating forecast: {str(e)}")
