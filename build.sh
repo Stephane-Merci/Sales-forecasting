@@ -5,6 +5,9 @@ set -o errexit  # Exit on error
 
 echo "🚀 Starting Smart-Buiz deployment build..."
 
+echo "🐍 Python version:"
+python --version
+
 echo "📦 Installing dependencies..."
 pip install --upgrade pip
 pip install -r requirements.txt

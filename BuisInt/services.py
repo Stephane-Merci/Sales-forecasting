@@ -64,11 +64,40 @@ class DataProcessingService:
                 print(f"[DEBUG] Processing column: {column}")
                 print(f"[DEBUG] First few values: {self.data[column].head()}")
                 
-                # Check if column is numeric
-                if pd.api.types.is_numeric_dtype(self.data[column]):
-                    print(f"[DEBUG] {column} detected as numeric")
-                    self.column_types[column] = 'numeric'
-                else:
+                # Check if column is numeric - be more strict about this
+                is_numeric = False
+                
+                try:
+                    # Try to convert all non-null values to numeric
+                    non_null_values = self.data[column].dropna()
+                    if len(non_null_values) == 0:
+                        print(f"[DEBUG] {column} is empty, marking as categorical")
+                        self.column_types[column] = 'categorical'
+                        continue
+                    
+                    # Check if we can convert all values to numeric
+                    numeric_converted = pd.to_numeric(non_null_values, errors='coerce')
+                    numeric_success_rate = numeric_converted.notna().sum() / len(non_null_values)
+                    
+                    # Only consider it numeric if 95% or more values can be converted
+                    if numeric_success_rate >= 0.95:
+                        print(f"[DEBUG] {column} detected as numeric (success rate: {numeric_success_rate:.2%})")
+                        self.column_types[column] = 'numeric'
+                        is_numeric = True
+                    else:
+                        print(f"[DEBUG] {column} has mixed types (numeric success rate: {numeric_success_rate:.2%}), marking as categorical")
+                        # Show some examples of non-numeric values
+                        non_numeric_mask = numeric_converted.isna()
+                        if non_numeric_mask.any():
+                            non_numeric_examples = non_null_values[non_numeric_mask].head(3).tolist()
+                            print(f"[DEBUG] Non-numeric examples in {column}: {non_numeric_examples}")
+                        self.column_types[column] = 'categorical'
+                except Exception as e:
+                    print(f"[DEBUG] Error checking numeric type for {column}: {str(e)}")
+                    self.column_types[column] = 'categorical'
+                
+                # If not numeric, check if it's a date column
+                if not is_numeric:
                     # Try to detect if it's a date column using our custom function
                     sample_size = min(100, len(self.data))
                     date_matches = 0
@@ -78,7 +107,7 @@ class DataProcessingService:
                     # Sample non-null values
                     for value in self.data[column].dropna().head(sample_size):
                         if isinstance(value, str):
-                            is_date, format_found = self.check_date_format(value)
+                            is_date, format_found = self.check_date_format(str(value))
                             if is_date:
                                 date_matches += 1
                                 if not detected_format:
@@ -91,6 +120,8 @@ class DataProcessingService:
                         try:
                             # Convert the column to datetime
                             self.data[column] = pd.to_datetime(self.data[column], format=detected_format)
+                            # Convert to string format YYYY-MM-DD for consistency
+                            self.data[column] = self.data[column].dt.strftime('%Y-%m-%d')
                             self.column_types[column] = 'date'
                         except Exception as e:
                             print(f"[DEBUG] Failed to convert {column} to datetime: {str(e)}")

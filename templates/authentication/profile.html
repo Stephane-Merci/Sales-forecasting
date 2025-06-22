@@ -1,74 +1,171 @@
 {% extends 'base.html' %}
+{% load static %}
 
-{% block title %}Profile{% endblock %}
+{% block title %}Smart-Buiz - Profile{% endblock %}
 
 {% block content %}
+<div class="profile-container">
 <div class="container">
     <div class="row justify-content-center">
-        <div class="col-md-8">
-            <div class="card shadow-sm">
-                <div class="card-body">
-                    <div class="text-center mb-4">
-                        <div class="profile-image mb-3">
-                            <i class="fas fa-user-circle fa-5x text-primary"></i>
+            <div class="col-lg-10">
+                <!-- Profile Header -->
+                <div class="profile-header">
+                    <div class="profile-avatar">
+                        <div class="avatar-circle">
+                            <i class="fas fa-user"></i>
                         </div>
-                        <h2 class="card-title">{{ user.username }}</h2>
-                        <p class="text-muted">{{ user.email }}</p>
+                        <div class="avatar-badge {% if user.is_verified %}verified{% else %}unverified{% endif %}">
+                            <i class="fas fa-{% if user.is_verified %}check{% else %}clock{% endif %}"></i>
+                        </div>
                     </div>
-
                     <div class="profile-info">
-                        <form method="post" class="needs-validation" novalidate>
-                            {% csrf_token %}
-                            <div class="form-group mb-3">
-                                <label for="username">Username</label>
-                                <input type="text" class="form-control" id="username" name="username" value="{{ user.username }}" required>
+                        <h1 class="profile-name">{{ user.username }}</h1>
+                        <p class="profile-email">{{ user.email }}</p>
+                        <div class="profile-stats">
+                            <div class="stat">
+                                <span class="stat-value">{{ user.date_joined|date:"M Y" }}</span>
+                                <span class="stat-label">Member Since</span>
                             </div>
-                            <div class="form-group mb-3">
-                                <label for="email">Email</label>
-                                <input type="email" class="form-control" id="email" name="email" value="{{ user.email }}" required>
+                            <div class="stat">
+                                <span class="stat-value">{% if user.is_verified %}Verified{% else %}Pending{% endif %}</span>
+                                <span class="stat-label">Account Status</span>
                             </div>
-                            <div class="form-group mb-3">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Messages -->
+                {% if messages %}
+                    {% for message in messages %}
+                        <div class="alert alert-{{ message.tags }} alert-dismissible fade show modern-alert" role="alert">
+                            <i class="fas fa-{% if message.tags == 'success' %}check-circle{% elif message.tags == 'error' %}exclamation-triangle{% else %}info-circle{% endif %} me-2"></i>
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+
+                <!-- Profile Cards -->
+                <div class="row">
+                    <!-- Personal Information -->
+                    <div class="col-lg-6 mb-4">
+                        <div class="profile-card">
+                            <div class="card-header">
+                                <h3><i class="fas fa-user-edit me-2"></i>Personal Information</h3>
+                            </div>
+                            <div class="card-content">
+                                <form method="post" class="profile-form needs-validation" novalidate>
+                                    {% csrf_token %}
+                                    <div class="form-group">
+                                        <label for="username">Username</label>
+                                        <div class="input-wrapper">
+                                            <i class="fas fa-user"></i>
+                                            <input type="text" class="form-control" id="username" name="username" 
+                                                   value="{{ user.username }}" required>
+                                        </div>
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label for="email">Email Address</label>
+                                        <div class="input-wrapper">
+                                            <i class="fas fa-envelope"></i>
+                                            <input type="email" class="form-control" id="email" name="email" 
+                                                   value="{{ user.email }}" required>
+                                        </div>
+                                    </div>
+
+                                    <div class="form-group">
                                 <label for="phone_number">Phone Number</label>
-                                <input type="tel" class="form-control" id="phone_number" name="phone_number" value="{{ user.phone_number }}">
+                                        <div class="input-wrapper">
+                                            <i class="fas fa-phone"></i>
+                                            <input type="tel" class="form-control" id="phone_number" name="phone_number" 
+                                                   value="{{ user.phone_number|default:'' }}" placeholder="Optional">
+                                        </div>
+                                    </div>
+
+                                    <button type="submit" class="btn btn-primary profile-btn">
+                                        <i class="fas fa-save me-2"></i>Update Profile
+                                    </button>
+                                </form>
                             </div>
-                            <button type="submit" class="btn btn-primary">Update Profile</button>
-                        </form>
+                        </div>
                     </div>
 
-                    <hr class="my-4">
-
-                    <div class="change-password">
-                        <h4>Change Password</h4>
-                        <form method="post" action="{% url 'change_password' %}" class="needs-validation" novalidate>
-                            {% csrf_token %}
-                            <div class="form-group mb-3">
-                                <label for="current_password">Current Password</label>
-                                <input type="password" class="form-control" id="current_password" name="current_password" required>
+                    <!-- Security Settings -->
+                    <div class="col-lg-6 mb-4">
+                        <div class="profile-card">
+                            <div class="card-header">
+                                <h3><i class="fas fa-shield-alt me-2"></i>Security</h3>
                             </div>
-                            <div class="form-group mb-3">
+                            <div class="card-content">
+                                <form method="post" action="{% url 'change_password' %}" class="profile-form needs-validation" novalidate>
+                                    {% csrf_token %}
+                                    <div class="form-group">
+                                        <label for="current_password">Current Password</label>
+                                        <div class="input-wrapper">
+                                            <i class="fas fa-lock"></i>
+                                            <input type="password" class="form-control" id="current_password" 
+                                                   name="current_password" required>
+                                            <button type="button" class="toggle-password" onclick="togglePassword('current_password', 'toggleCurrent')">
+                                                <i class="fas fa-eye" id="toggleCurrent"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <div class="form-group">
                                 <label for="new_password">New Password</label>
-                                <input type="password" class="form-control" id="new_password" name="new_password" required>
+                                        <div class="input-wrapper">
+                                            <i class="fas fa-key"></i>
+                                            <input type="password" class="form-control" id="new_password" 
+                                                   name="new_password" required minlength="8">
+                                            <button type="button" class="toggle-password" onclick="togglePassword('new_password', 'toggleNew')">
+                                                <i class="fas fa-eye" id="toggleNew"></i>
+                                            </button>
+                                        </div>
                             </div>
-                            <div class="form-group mb-3">
+
+                                    <div class="form-group">
                                 <label for="confirm_password">Confirm New Password</label>
-                                <input type="password" class="form-control" id="confirm_password" name="confirm_password" required>
+                                        <div class="input-wrapper">
+                                            <i class="fas fa-key"></i>
+                                            <input type="password" class="form-control" id="confirm_password" 
+                                                   name="confirm_password" required minlength="8">
+                                            <button type="button" class="toggle-password" onclick="togglePassword('confirm_password', 'toggleConfirm')">
+                                                <i class="fas fa-eye" id="toggleConfirm"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <button type="submit" class="btn btn-warning profile-btn">
+                                        <i class="fas fa-key me-2"></i>Change Password
+                                    </button>
+                                </form>
                             </div>
-                            <button type="submit" class="btn btn-warning">Change Password</button>
-                        </form>
+                        </div>
+                    </div>
                     </div>
 
-                    <div class="account-status mt-4">
-                        <h4>Account Status</h4>
-                        <div class="d-flex align-items-center">
-                            <div class="status-indicator {% if user.is_verified %}bg-success{% else %}bg-warning{% endif %}"></div>
-                            <span class="ms-2">
-                                {% if user.is_verified %}
-                                    Email Verified
-                                {% else %}
-                                    Email Not Verified
-                                    <a href="{% url 'resend_verification' %}" class="btn btn-sm btn-outline-primary ms-2">Resend Verification</a>
+                <!-- Account Status -->
+                <div class="profile-card">
+                    <div class="card-header">
+                        <h3><i class="fas fa-info-circle me-2"></i>Account Status</h3>
+                    </div>
+                    <div class="card-content">
+                        <div class="status-grid">
+                            <div class="status-item">
+                                <div class="status-icon {% if user.is_verified %}verified{% else %}pending{% endif %}">
+                                    <i class="fas fa-{% if user.is_verified %}check-circle{% else %}clock{% endif %}"></i>
+                                </div>
+                                <div class="status-info">
+                                    <h4>Email Verification</h4>
+                                    <p>{% if user.is_verified %}Your email has been verified{% else %}Email verification pending{% endif %}</p>
+                                    {% if not user.is_verified %}
+                                        <a href="{% url 'resend_verification' %}" class="btn btn-sm btn-outline-primary">
+                                            <i class="fas fa-paper-plane me-2"></i>Resend Verification
+                                        </a>
                                 {% endif %}
-                            </span>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -80,35 +177,332 @@
 
 {% block extra_css %}
 <style>
-.profile-image {
-    width: 100px;
-    height: 100px;
-    margin: 0 auto;
+    .profile-container {
+        background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+        min-height: 100vh;
+        padding: 2rem 0;
+    }
+
+    .profile-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 20px;
+        padding: 2rem;
+        margin-bottom: 2rem;
+        color: white;
+        display: flex;
+        align-items: center;
+        gap: 2rem;
+        box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
+        position: relative;
+        overflow: hidden;
+    }
+
+    .profile-header::before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        right: -20%;
+        width: 200px;
+        height: 200px;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 50%;
+    }
+
+    .profile-avatar {
+        position: relative;
+        flex-shrink: 0;
+    }
+
+    .avatar-circle {
+        width: 120px;
+        height: 120px;
+        background: rgba(255, 255, 255, 0.2);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 3rem;
+        border: 4px solid rgba(255, 255, 255, 0.3);
+        backdrop-filter: blur(10px);
+    }
+
+    .avatar-badge {
+        position: absolute;
+        bottom: 10px;
+        right: 10px;
+        width: 30px;
+        height: 30px;
+        border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
+        font-size: 0.8rem;
+        border: 3px solid white;
 }
 
-.status-indicator {
-    width: 10px;
-    height: 10px;
-    border-radius: 50%;
-    display: inline-block;
-}
-
-.profile-info, .change-password, .account-status {
-    animation: fadeIn 0.5s ease-in-out;
-}
-
-@keyframes fadeIn {
-    from {
-        opacity: 0;
-        transform: translateY(20px);
+    .avatar-badge.verified {
+        background: #10b981;
     }
-    to {
-        opacity: 1;
-        transform: translateY(0);
+
+    .avatar-badge.unverified {
+        background: #f59e0b;
+    }
+
+    .profile-name {
+        font-size: 2.5rem;
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+    }
+
+    .profile-email {
+        font-size: 1.2rem;
+        opacity: 0.9;
+        margin-bottom: 1rem;
+    }
+
+    .profile-stats {
+        display: flex;
+        gap: 2rem;
+    }
+
+    .stat {
+        text-align: center;
+    }
+
+    .stat-value {
+        display: block;
+        font-size: 1.5rem;
+        font-weight: 600;
+    }
+
+    .stat-label {
+        font-size: 0.9rem;
+        opacity: 0.8;
+    }
+
+    .profile-card {
+        background: white;
+        border-radius: 15px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        overflow: hidden;
+        margin-bottom: 2rem;
+        transition: transform 0.3s ease;
+    }
+
+    .profile-card:hover {
+        transform: translateY(-5px);
+    }
+
+    .card-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 1.5rem 2rem;
+        border: none;
+    }
+
+    .card-header h3 {
+        margin: 0;
+        font-size: 1.3rem;
+        font-weight: 600;
+    }
+
+    .card-content {
+        padding: 2rem;
+    }
+
+    .form-group {
+        margin-bottom: 1.5rem;
+    }
+
+    .form-group label {
+        font-weight: 600;
+        color: #4a5568;
+        margin-bottom: 0.5rem;
+        display: block;
+    }
+
+    .input-wrapper {
+        position: relative;
+        display: flex;
+        align-items: center;
+    }
+
+    .input-wrapper i {
+        position: absolute;
+        left: 15px;
+        color: #667eea;
+        z-index: 2;
+    }
+
+    .input-wrapper .form-control {
+        padding-left: 45px;
+        border: 2px solid #e2e8f0;
+        border-radius: 10px;
+        font-size: 1rem;
+        transition: all 0.3s ease;
+        background: #f8f9fa;
+    }
+
+    .input-wrapper .form-control:focus {
+        border-color: #667eea;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        background: white;
+    }
+
+    .toggle-password {
+        position: absolute;
+        right: 15px;
+        background: none;
+        border: none;
+        color: #667eea;
+        cursor: pointer;
+        z-index: 2;
+        transition: color 0.3s ease;
+    }
+
+    .toggle-password:hover {
+        color: #5a67d8;
+    }
+
+    .profile-btn {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border: none;
+        border-radius: 10px;
+        padding: 12px 30px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .profile-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 25px rgba(102, 126, 234, 0.3);
+    }
+
+    .btn-warning.profile-btn {
+        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    }
+
+    .btn-warning.profile-btn:hover {
+        box-shadow: 0 10px 25px rgba(245, 158, 11, 0.3);
+    }
+
+    .status-grid {
+        display: grid;
+        gap: 1.5rem;
+    }
+
+    .status-item {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 1.5rem;
+        background: #f8f9fa;
+        border-radius: 10px;
+        border: 2px solid #e2e8f0;
+    }
+
+    .status-icon {
+        width: 60px;
+        height: 60px;
+    border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        color: white;
+}
+
+    .status-icon.verified {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    }
+
+    .status-icon.pending {
+        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    }
+
+    .status-info h4 {
+        margin: 0 0 0.5rem 0;
+        color: #2d3748;
+        font-weight: 600;
+    }
+
+    .status-info p {
+        margin: 0 0 1rem 0;
+        color: #718096;
+    }
+
+    .modern-alert {
+        border-radius: 12px;
+        border: none;
+        backdrop-filter: blur(10px);
+        font-weight: 500;
+        margin-bottom: 2rem;
+}
+
+    @media (max-width: 768px) {
+        .profile-header {
+            flex-direction: column;
+            text-align: center;
+            gap: 1rem;
+        }
+
+        .profile-stats {
+            justify-content: center;
+    }
+
+        .avatar-circle {
+            width: 100px;
+            height: 100px;
+            font-size: 2.5rem;
+        }
+
+        .profile-name {
+            font-size: 2rem;
+        }
+
+        .card-content {
+            padding: 1.5rem;
     }
 }
 </style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function togglePassword(inputId, iconId) {
+    const passwordInput = document.getElementById(inputId);
+    const toggleIcon = document.getElementById(iconId);
+    
+    if (passwordInput.type === 'password') {
+        passwordInput.type = 'text';
+        toggleIcon.classList.remove('fa-eye');
+        toggleIcon.classList.add('fa-eye-slash');
+    } else {
+        passwordInput.type = 'password';
+        toggleIcon.classList.remove('fa-eye-slash');
+        toggleIcon.classList.add('fa-eye');
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Password confirmation validation
+    const newPassword = document.getElementById('new_password');
+    const confirmPassword = document.getElementById('confirm_password');
+    
+    if (newPassword && confirmPassword) {
+        function validatePasswords() {
+            if (newPassword.value !== confirmPassword.value) {
+                confirmPassword.setCustomValidity("Passwords don't match");
+            } else {
+                confirmPassword.setCustomValidity('');
+            }
+        }
+        
+        newPassword.addEventListener('input', validatePasswords);
+        confirmPassword.addEventListener('input', validatePasswords);
+    }
+});
+</script>
 {% endblock %} 

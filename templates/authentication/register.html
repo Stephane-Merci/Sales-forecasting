@@ -1,81 +1,131 @@
 {% extends 'base.html' %}
+{% load static %}
 
-{% block title %}Register{% endblock %}
+{% block title %}Smart-Buiz - Register{% endblock %}
 
 {% block content %}
+<div class="auth-container">
+    <div class="auth-background"></div>
 <div class="container">
-    <div class="row justify-content-center">
-        <div class="col-md-6 col-lg-5">
-            <div class="card shadow-lg border-0 rounded-lg mt-5">
-                <div class="card-header bg-primary text-white text-center py-4">
-                    <h3 class="mb-0">Create Account</h3>
+        <div class="row justify-content-center align-items-center min-vh-100">
+            <div class="col-md-7 col-lg-6">
+                <div class="auth-card">
+                    <!-- Logo and Welcome -->
+                    <div class="text-center mb-4">
+                        <div class="auth-logo mb-3">
+                            <img src="{% static 'images/logo.svg' %}" alt="Smart-Buiz" class="logo-lg">
+                        </div>
+                        <h2 class="auth-title">Join Smart-Buiz</h2>
+                        <p class="auth-subtitle">Create your account and start analyzing</p>
                 </div>
-                <div class="card-body p-4">
+
+                    <!-- Messages -->
                     {% if messages %}
                         {% for message in messages %}
-                            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                            <div class="alert alert-{{ message.tags }} alert-dismissible fade show modern-alert" role="alert">
+                                <i class="fas fa-{% if message.tags == 'success' %}check-circle{% elif message.tags == 'error' %}exclamation-triangle{% else %}info-circle{% endif %} me-2"></i>
                                 {{ message }}
                                 <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                             </div>
                         {% endfor %}
                     {% endif %}
 
-                    <form method="post" class="needs-validation" novalidate>
+                    <!-- Registration Form -->
+                    <form method="post" class="auth-form needs-validation" novalidate>
                         {% csrf_token %}
-                        <div class="form-floating mb-3">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <div class="input-group">
+                                        <span class="input-group-text"><i class="fas fa-user"></i></span>
+                                        <div class="form-floating">
                             <input type="text" class="form-control" id="username" name="username" placeholder="Username" required>
                             <label for="username">Username</label>
+                                        </div>
+                                    </div>
                             <div class="invalid-feedback">Please choose a username.</div>
                         </div>
-                        <div class="form-floating mb-3">
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <div class="input-group">
+                                        <span class="input-group-text"><i class="fas fa-envelope"></i></span>
+                                        <div class="form-floating">
                             <input type="email" class="form-control" id="email" name="email" placeholder="name@example.com" required>
-                            <label for="email">Email address</label>
+                                            <label for="email">Email Address</label>
+                                        </div>
+                                    </div>
                             <div class="invalid-feedback">Please enter a valid email address.</div>
+                                </div>
+                            </div>
                         </div>
-                        <div class="form-floating mb-3">
+
+                        <div class="form-group">
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fas fa-phone"></i></span>
+                                <div class="form-floating">
                             <input type="tel" class="form-control" id="phone" name="phone" placeholder="Phone Number">
                             <label for="phone">Phone Number (Optional)</label>
+                                </div>
+                            </div>
                         </div>
-                        <div class="form-floating mb-3">
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <div class="input-group">
+                                        <span class="input-group-text"><i class="fas fa-lock"></i></span>
+                                        <div class="form-floating">
                             <input type="password" class="form-control" id="password1" name="password1" placeholder="Password" required minlength="8">
                             <label for="password1">Password</label>
+                                        </div>
+                                        <button type="button" class="btn btn-outline-secondary" onclick="togglePassword('password1', 'togglePassword1Icon')">
+                                            <i class="fas fa-eye" id="togglePassword1Icon"></i>
+                                        </button>
+                                    </div>
                             <div class="invalid-feedback">Please enter a password (minimum 8 characters).</div>
                         </div>
-                        <div class="form-floating mb-3">
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <div class="input-group">
+                                        <span class="input-group-text"><i class="fas fa-lock"></i></span>
+                                        <div class="form-floating">
                             <input type="password" class="form-control" id="password2" name="password2" placeholder="Confirm Password" required minlength="8">
                             <label for="password2">Confirm Password</label>
+                                        </div>
+                                        <button type="button" class="btn btn-outline-secondary" onclick="togglePassword('password2', 'togglePassword2Icon')">
+                                            <i class="fas fa-eye" id="togglePassword2Icon"></i>
+                                        </button>
+                                    </div>
                             <div class="invalid-feedback">Please confirm your password.</div>
+                                </div>
+                            </div>
                         </div>
-                        <div class="form-check mb-3">
+
+                        <div class="form-check mb-4">
                             <input class="form-check-input" type="checkbox" id="terms" name="terms" required>
                             <label class="form-check-label" for="terms">
-                                I agree to the <a href="#" class="text-decoration-none">Terms of Service</a> and <a href="#" class="text-decoration-none">Privacy Policy</a>
+                                I agree to the <a href="#" class="auth-link">Terms of Service</a> and <a href="#" class="auth-link">Privacy Policy</a>
                             </label>
                             <div class="invalid-feedback">You must agree before submitting.</div>
                         </div>
-                        <div class="d-grid">
-                            <button type="submit" class="btn btn-primary btn-lg">Create Account</button>
-                        </div>
+
+                        <button type="submit" class="btn btn-primary btn-lg w-100 auth-btn">
+                            <i class="fas fa-user-plus me-2"></i>Create Account
+                        </button>
                     </form>
 
-                    <div class="text-center mt-4">
-                        <p class="text-muted">Or sign up with</p>
-                        <div class="d-grid gap-2">
-                            <a href="#" class="btn btn-outline-dark">
-                                <i class="fab fa-google me-2"></i>Continue with Google
-                            </a>
-                            <a href="#" class="btn btn-outline-primary">
-                                <i class="fab fa-facebook me-2"></i>Continue with Facebook
-                            </a>
-                            <a href="#" class="btn btn-outline-info">
-                                <i class="fab fa-twitter me-2"></i>Continue with Twitter
-                            </a>
-                        </div>
+                    <!-- Divider -->
+                    <div class="auth-divider">
+                        <span>or</span>
                     </div>
-                </div>
-                <div class="card-footer text-center py-3">
-                    <div class="small">
-                        Already have an account? <a href="{% url 'login' %}" class="text-decoration-none">Sign in!</a>
+
+                    <!-- Sign In Link -->
+                    <div class="text-center">
+                        <p class="mb-0">Already have an account? 
+                            <a href="{% url 'login' %}" class="auth-link">Sign In</a>
+                        </p>
                     </div>
                 </div>
             </div>
@@ -85,52 +135,206 @@
 
 {% block extra_css %}
 <style>
-    .card {
-        transition: transform 0.3s ease;
-    }
-    .card:hover {
-        transform: translateY(-5px);
-    }
-    .btn {
-        transition: all 0.3s ease;
-    }
-    .btn:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-    }
-    .social-btn {
+    .auth-container {
         position: relative;
+        min-height: 100vh;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         overflow: hidden;
     }
-    .social-btn::after {
+
+    .auth-background {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1000"><defs><radialGradient id="a" cx="50%" cy="50%"><stop offset="0%" stop-color="%23ffffff" stop-opacity="0.1"/><stop offset="100%" stop-color="%23ffffff" stop-opacity="0"/></radialGradient></defs><circle cx="200" cy="200" r="100" fill="url(%23a)"/><circle cx="800" cy="300" r="150" fill="url(%23a)"/><circle cx="400" cy="700" r="120" fill="url(%23a)"/></svg>');
+    }
+
+    .auth-card {
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(20px);
+        border-radius: 20px;
+        padding: 2.5rem;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        position: relative;
+        z-index: 1;
+        animation: slideIn 0.6s ease-out;
+        margin: 2rem 0;
+    }
+
+    .logo-lg {
+        width: 80px;
+        height: 80px;
+        filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.1));
+    }
+
+    .auth-title {
+        color: #2d3748;
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+        font-size: 2rem;
+    }
+
+    .auth-subtitle {
+        color: #718096;
+        margin-bottom: 0;
+        font-size: 1.1rem;
+    }
+
+    .auth-form {
+        margin-top: 2rem;
+    }
+
+    .form-group {
+        margin-bottom: 1.5rem;
+    }
+
+    .input-group-text {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        border-radius: 12px 0 0 12px;
+        width: 50px;
+        justify-content: center;
+    }
+
+    .form-control {
+        border: 2px solid #e2e8f0;
+        border-radius: 0 12px 12px 0;
+        padding: 0.875rem 1rem;
+        font-size: 1rem;
+        transition: all 0.3s ease;
+        background: rgba(255, 255, 255, 0.9);
+    }
+
+    .form-control:focus {
+        border-color: #667eea;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        background: white;
+    }
+
+    .form-floating > label {
+        color: #718096;
+        font-weight: 500;
+    }
+
+    .auth-btn {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border: none;
+        border-radius: 12px;
+        padding: 0.875rem 2rem;
+        font-weight: 600;
+        font-size: 1.1rem;
+        transition: all 0.3s ease;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .auth-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 15px 35px rgba(102, 126, 234, 0.3);
+        background: linear-gradient(135deg, #5a67d8 0%, #6b46c1 100%);
+    }
+
+    .auth-divider {
+        position: relative;
+        text-align: center;
+        margin: 2rem 0;
+    }
+
+    .auth-divider::before {
         content: '';
         position: absolute;
         top: 50%;
-        left: 50%;
-        width: 0;
-        height: 0;
-        background: rgba(255,255,255,0.2);
-        border-radius: 50%;
-        transform: translate(-50%, -50%);
-        transition: width 0.6s ease, height 0.6s ease;
+        left: 0;
+        right: 0;
+        height: 1px;
+        background: linear-gradient(90deg, transparent, #e2e8f0, transparent);
     }
-    .social-btn:hover::after {
-        width: 300px;
-        height: 300px;
+
+    .auth-divider span {
+        background: rgba(255, 255, 255, 0.95);
+        padding: 0 1rem;
+        color: #718096;
+        font-weight: 500;
     }
-    .form-floating > .form-control:focus ~ label,
-    .form-floating > .form-control:not(:placeholder-shown) ~ label {
-        color: #0d6efd;
+
+    .auth-link {
+        color: #667eea;
+        font-weight: 600;
+        text-decoration: none;
+        transition: color 0.3s ease;
     }
-    .form-control:focus {
-        border-color: #0d6efd;
-        box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+
+    .auth-link:hover {
+        color: #5a67d8;
+    }
+
+    .modern-alert {
+        border-radius: 12px;
+        border: none;
+        backdrop-filter: blur(10px);
+        font-weight: 500;
+    }
+
+    .form-check-input:checked {
+        background-color: #667eea;
+        border-color: #667eea;
+    }
+
+    .form-check-label {
+        font-weight: 500;
+        color: #4a5568;
+    }
+
+    @keyframes slideIn {
+        from {
+            opacity: 0;
+            transform: translateY(30px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    @media (max-width: 768px) {
+        .auth-card {
+            padding: 1.5rem;
+            margin: 1rem;
+        }
+        
+        .auth-title {
+            font-size: 1.5rem;
+        }
+        
+        .logo-lg {
+            width: 60px;
+            height: 60px;
+        }
     }
 </style>
 {% endblock %}
 
 {% block extra_js %}
 <script>
+function togglePassword(inputId, iconId) {
+    const passwordInput = document.getElementById(inputId);
+    const toggleIcon = document.getElementById(iconId);
+    
+    if (passwordInput.type === 'password') {
+        passwordInput.type = 'text';
+        toggleIcon.classList.remove('fa-eye');
+        toggleIcon.classList.add('fa-eye-slash');
+    } else {
+        passwordInput.type = 'password';
+        toggleIcon.classList.remove('fa-eye-slash');
+        toggleIcon.classList.add('fa-eye');
+    }
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     const form = document.querySelector('form');
     const password1 = document.getElementById('password1');

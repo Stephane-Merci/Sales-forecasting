@@ -1,33 +1,499 @@
 {% extends 'base.html' %}
+{% load static %}
 
-{% block title %}Home{% endblock %}
+{% block title %}Smart-Buiz - Intelligent Business Forecasting{% endblock %}
+
+{% block extra_css %}
+<style>
+    .hero-section {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 4rem 0;
+        margin: -2rem -15px 4rem -15px;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .hero-section::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1000"><defs><radialGradient id="a" cx="50%" cy="50%"><stop offset="0%" stop-color="%23ffffff" stop-opacity="0.1"/><stop offset="100%" stop-color="%23ffffff" stop-opacity="0"/></radialGradient></defs><circle cx="200" cy="200" r="100" fill="url(%23a)"/><circle cx="800" cy="300" r="150" fill="url(%23a)"/><circle cx="400" cy="700" r="120" fill="url(%23a)"/></svg>');
+        opacity: 0.3;
+    }
+
+    .hero-content {
+        position: relative;
+        z-index: 1;
+    }
+
+    .hero-title {
+        font-size: 3.5rem;
+        font-weight: 700;
+        margin-bottom: 1.5rem;
+        text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .hero-subtitle {
+        font-size: 1.3rem;
+        margin-bottom: 2rem;
+        opacity: 0.9;
+    }
+
+    .feature-card {
+        background: white;
+        border-radius: 20px;
+        padding: 2rem;
+        text-align: center;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+        border: none;
+        height: 100%;
+    }
+
+    .feature-card:hover {
+        transform: translateY(-10px);
+        box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+    }
+
+    .feature-icon {
+        width: 80px;
+        height: 80px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 1.5rem;
+        color: white;
+        font-size: 2rem;
+    }
+
+    .feature-title {
+        font-size: 1.5rem;
+        font-weight: 600;
+        margin-bottom: 1rem;
+        color: #2d3748;
+    }
+
+    .feature-description {
+        color: #718096;
+        line-height: 1.6;
+    }
+
+    .stats-section {
+        background: #f8fafc;
+        padding: 4rem 0;
+        margin: 4rem -15px;
+    }
+
+    .stat-item {
+        text-align: center;
+        padding: 1rem;
+    }
+
+    .stat-number {
+        font-size: 3rem;
+        font-weight: 700;
+        color: #667eea;
+        display: block;
+    }
+
+    .stat-label {
+        color: #718096;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        font-size: 0.9rem;
+    }
+
+    .cta-section {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 4rem 0;
+        margin: 4rem -15px -2rem -15px;
+        text-align: center;
+        position: relative;
+    }
+
+    .cta-section::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1000"><defs><radialGradient id="b" cx="50%" cy="50%"><stop offset="0%" stop-color="%23ffffff" stop-opacity="0.1"/><stop offset="100%" stop-color="%23ffffff" stop-opacity="0"/></radialGradient></defs><circle cx="300" cy="300" r="120" fill="url(%23b)"/><circle cx="700" cy="200" r="100" fill="url(%23b)"/><circle cx="500" cy="800" r="140" fill="url(%23b)"/></svg>');
+        opacity: 0.3;
+    }
+
+    .cta-content {
+        position: relative;
+        z-index: 1;
+    }
+
+    .btn-hero {
+        background: white;
+        color: #667eea;
+        border: none;
+        padding: 1rem 3rem;
+        font-size: 1.1rem;
+        font-weight: 600;
+        border-radius: 50px;
+        transition: all 0.3s ease;
+        text-decoration: none;
+        display: inline-block;
+    }
+
+    .btn-hero:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+        color: #667eea;
+    }
+
+    .btn-outline-hero {
+        background: transparent;
+        color: white;
+        border: 2px solid white;
+        padding: 1rem 3rem;
+        font-size: 1.1rem;
+        font-weight: 600;
+        border-radius: 50px;
+        transition: all 0.3s ease;
+        text-decoration: none;
+        display: inline-block;
+        margin-left: 1rem;
+    }
+
+    .btn-outline-hero:hover {
+        background: white;
+        color: #667eea;
+        transform: translateY(-3px);
+        box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+    }
+
+    .how-it-works {
+        padding: 4rem 0;
+    }
+
+    .process-step {
+        text-align: center;
+        margin-bottom: 3rem;
+        position: relative;
+    }
+
+    .step-number {
+        width: 60px;
+        height: 60px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 1.5rem;
+        color: white;
+        font-size: 1.5rem;
+        font-weight: 700;
+    }
+
+    .process-step::after {
+        content: '';
+        position: absolute;
+        top: 30px;
+        left: 50%;
+        width: 100%;
+        height: 2px;
+        background: linear-gradient(90deg, #667eea, #764ba2);
+        transform: translateX(-50%);
+        z-index: -1;
+    }
+
+    .process-step:last-child::after {
+        display: none;
+    }
+
+    @media (max-width: 768px) {
+        .hero-title {
+            font-size: 2.5rem;
+        }
+        
+        .hero-subtitle {
+            font-size: 1.1rem;
+        }
+        
+        .process-step::after {
+            display: none;
+        }
+        
+        .btn-outline-hero {
+            margin-left: 0;
+            margin-top: 1rem;
+        }
+    }
+
+    .authenticated-welcome {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 3rem 0;
+        margin: -2rem -15px 4rem -15px;
+        text-align: center;
+        border-radius: 0 0 30px 30px;
+    }
+
+    .welcome-card {
+        background: rgba(255, 255, 255, 0.1);
+        backdrop-filter: blur(10px);
+        border-radius: 20px;
+        padding: 2rem;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .quick-action-btn {
+        background: white;
+        color: #667eea;
+        border: none;
+        padding: 0.75rem 2rem;
+        font-weight: 600;
+        border-radius: 50px;
+        transition: all 0.3s ease;
+        text-decoration: none;
+        display: inline-block;
+        margin: 0.5rem;
+    }
+
+    .quick-action-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 15px rgba(0,0,0,0.2);
+        color: #667eea;
+    }
+</style>
+{% endblock %}
 
 {% block content %}
-<div class="container">
-    <div class="row justify-content-center">
-        <div class="col-md-8">
-            <div class="card shadow-sm">
-                <div class="card-body text-center">
-                    <h1 class="card-title mb-4">Welcome to Authentication System</h1>
-                    {% if user.is_authenticated %}
-                        <p class="lead">Hello, {{ user.username }}!</p>
-                        <p>Your email: {{ user.email }}</p>
-                        {% if user.phone_number %}
-                            <p>Phone: {{ user.phone_number }}</p>
-                        {% endif %}
-                        <p>Account Status: {% if user.is_verified %}Verified{% else %}Not Verified{% endif %}</p>
-                        <div class="mt-4">
-                            <a href="{% url 'logout' %}" class="btn btn-danger">Logout</a>
+{% if user.is_authenticated %}
+    <!-- Authenticated User Welcome Section -->
+    <div class="authenticated-welcome">
+        <div class="container">
+            <div class="row justify-content-center">
+                <div class="col-lg-8">
+                    <div class="welcome-card">
+                        <h1 class="display-4 mb-3">Welcome back, {{ user.first_name|default:user.username }}!</h1>
+                        <p class="lead mb-4">Ready to dive into your business intelligence dashboard and generate powerful forecasts?</p>
+                        
+                        <div class="row text-center mb-4">
+                            <div class="col-md-4">
+                                <h3 class="mb-2">📊</h3>
+                                <p class="mb-0">Your account is {% if user.is_verified %}verified{% else %}pending verification{% endif %}</p>
+                            </div>
+                            <div class="col-md-4">
+                                <h3 class="mb-2">💼</h3>
+                                <p class="mb-0">{{ user.email }}</p>
+                            </div>
+                            <div class="col-md-4">
+                                <h3 class="mb-2">🚀</h3>
+                                <p class="mb-0">Ready to forecast</p>
+                            </div>
                         </div>
-                    {% else %}
-                        <p class="lead">Please login or register to continue.</p>
+                        
                         <div class="mt-4">
-                            <a href="{% url 'login' %}" class="btn btn-primary me-2">Login</a>
-                            <a href="{% url 'register' %}" class="btn btn-outline-primary">Register</a>
+                            <a href="{% url 'BuisInt:buisint_add_data' %}" class="quick-action-btn">
+                                <i class="fas fa-database me-2"></i>Manage Data
+                            </a>
+                            <a href="{% url 'BuisInt:buisint_dashboard' %}" class="quick-action-btn">
+                                <i class="fas fa-chart-line me-2"></i>Dashboard
+                            </a>
+                            <a href="{% url 'profile' %}" class="quick-action-btn">
+                                <i class="fas fa-user me-2"></i>Profile
+                            </a>
                         </div>
-                    {% endif %}
+                    </div>
                 </div>
             </div>
+        </div>
+    </div>
+{% else %}
+    <!-- Hero Section for Non-Authenticated Users -->
+    <div class="hero-section">
+        <div class="container">
+            <div class="row align-items-center">
+                <div class="col-lg-6">
+                    <div class="hero-content">
+                        <h1 class="hero-title">Smart-Buiz</h1>
+                        <p class="hero-subtitle">Intelligent Business Forecasting Made Simple</p>
+                        <p class="mb-4">Transform your business data into actionable insights with AI-powered forecasting. Make data-driven decisions and stay ahead of market trends.</p>
+                        <a href="{% url 'register' %}" class="btn-hero me-3">
+                            <i class="fas fa-rocket me-2"></i>Get Started
+                        </a>
+                        <a href="{% url 'login' %}" class="btn-outline-hero">
+                            <i class="fas fa-sign-in-alt me-2"></i>Sign In
+                        </a>
+                    </div>
+                </div>
+                <div class="col-lg-6 text-center">
+                    <div style="font-size: 15rem; opacity: 0.3;">
+                        📈
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endif %}
+
+<!-- Features Section -->
+<div class="container">
+    <div class="text-center mb-5">
+        <h2 class="display-5 fw-bold mb-3">Powerful Features for Smart Business Decisions</h2>
+        <p class="lead text-muted">Discover how Smart-Buiz transforms your business intelligence</p>
+    </div>
+    
+    <div class="row g-4 mb-5">
+        <div class="col-lg-4 col-md-6">
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="fas fa-chart-line"></i>
+                </div>
+                <h3 class="feature-title">AI-Powered Forecasting</h3>
+                <p class="feature-description">Leverage advanced machine learning algorithms to predict future trends, sales, and business metrics with high accuracy.</p>
+            </div>
+        </div>
+        <div class="col-lg-4 col-md-6">
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="fas fa-database"></i>
+                </div>
+                <h3 class="feature-title">Smart Data Management</h3>
+                <p class="feature-description">Upload, organize, and manage your business data seamlessly. Support for CSV, Excel, and various data formats.</p>
+            </div>
+        </div>
+        <div class="col-lg-4 col-md-6">
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="fas fa-chart-bar"></i>
+                </div>
+                <h3 class="feature-title">Interactive Dashboards</h3>
+                <p class="feature-description">Beautiful, intuitive dashboards that make complex data easy to understand and act upon.</p>
+            </div>
+        </div>
+        <div class="col-lg-4 col-md-6">
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="fas fa-brain"></i>
+                </div>
+                <h3 class="feature-title">Multiple ML Models</h3>
+                <p class="feature-description">Choose from various forecasting models including ARIMA, Linear Regression, and Neural Networks for best results.</p>
+            </div>
+        </div>
+        <div class="col-lg-4 col-md-6">
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="fas fa-download"></i>
+                </div>
+                <h3 class="feature-title">Export & Share</h3>
+                <p class="feature-description">Export your forecasts and reports in multiple formats. Share insights with your team effortlessly.</p>
+            </div>
+        </div>
+        <div class="col-lg-4 col-md-6">
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="fas fa-shield-alt"></i>
+                </div>
+                <h3 class="feature-title">Secure & Reliable</h3>
+                <p class="feature-description">Enterprise-grade security ensures your business data is always protected and confidential.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Stats Section -->
+<div class="stats-section">
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-3 col-md-6">
+                <div class="stat-item">
+                    <span class="stat-number">95%</span>
+                    <span class="stat-label">Accuracy Rate</span>
+                </div>
+            </div>
+            <div class="col-lg-3 col-md-6">
+                <div class="stat-item">
+                    <span class="stat-number">50+</span>
+                    <span class="stat-label">Data Sources</span>
+                </div>
+            </div>
+            <div class="col-lg-3 col-md-6">
+                <div class="stat-item">
+                    <span class="stat-number">24/7</span>
+                    <span class="stat-label">Processing</span>
+                </div>
+            </div>
+            <div class="col-lg-3 col-md-6">
+                <div class="stat-item">
+                    <span class="stat-number">∞</span>
+                    <span class="stat-label">Growth Potential</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- How It Works Section -->
+<div class="how-it-works">
+    <div class="container">
+        <div class="text-center mb-5">
+            <h2 class="display-5 fw-bold mb-3">How Smart-Buiz Works</h2>
+            <p class="lead text-muted">Get started in three simple steps</p>
+        </div>
+        
+        <div class="row">
+            <div class="col-lg-4">
+                <div class="process-step">
+                    <div class="step-number">1</div>
+                    <h4 class="mb-3">Upload Your Data</h4>
+                    <p class="text-muted">Simply upload your business data in CSV or Excel format. Our system automatically validates and processes your information.</p>
+                </div>
+            </div>
+            <div class="col-lg-4">
+                <div class="process-step">
+                    <div class="step-number">2</div>
+                    <h4 class="mb-3">Choose Your Model</h4>
+                    <p class="text-muted">Select from our range of AI forecasting models. Our system recommends the best model based on your data patterns.</p>
+                </div>
+            </div>
+            <div class="col-lg-4">
+                <div class="process-step">
+                    <div class="step-number">3</div>
+                    <h4 class="mb-3">Generate Insights</h4>
+                    <p class="text-muted">View beautiful forecasts, download reports, and make informed business decisions based on AI-generated insights.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- CTA Section -->
+<div class="cta-section">
+    <div class="container">
+        <div class="cta-content">
+            <h2 class="display-5 fw-bold mb-3">Ready to Transform Your Business?</h2>
+            <p class="lead mb-4">Join thousands of businesses already using Smart-Buiz for smarter decision making</p>
+            {% if not user.is_authenticated %}
+                <a href="{% url 'register' %}" class="btn-hero me-3">
+                    <i class="fas fa-rocket me-2"></i>Start Free Trial
+                </a>
+                <a href="#features" class="btn-outline-hero">
+                    <i class="fas fa-info-circle me-2"></i>Learn More
+                </a>
+            {% else %}
+                <a href="{% url 'BuisInt:buisint_dashboard' %}" class="btn-hero me-3">
+                    <i class="fas fa-chart-line me-2"></i>Go to Dashboard
+                </a>
+                <a href="{% url 'BuisInt:buisint_add_data' %}" class="btn-outline-hero">
+                    <i class="fas fa-database me-2"></i>Upload Data
+                </a>
+            {% endif %}
         </div>
     </div>
 </div>
