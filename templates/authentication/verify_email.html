@@ -1,36 +1,107 @@
 {% extends 'base.html' %}
+{% load static %}
 
-{% block title %}Verify Email{% endblock %}
+{% block title %}Smart-Buiz - Email Verification{% endblock %}
 
 {% block content %}
+<div class="auth-container">
+    <div class="auth-background"></div>
 <div class="container">
-    <div class="row justify-content-center">
-        <div class="col-md-6">
-            <div class="card shadow-sm">
-                <div class="card-body text-center">
-                    <div class="verification-icon mb-4">
-                        <i class="fas fa-envelope-open-text fa-4x text-primary"></i>
+        <div class="row justify-content-center align-items-center min-vh-100">
+            <div class="col-md-7 col-lg-6">
+                <div class="auth-card">
+                    <!-- Logo and Title -->
+                    <div class="text-center mb-4">
+                        <div class="auth-logo mb-3">
+                            <img src="{% static 'images/logo.svg' %}" alt="Smart-Buiz" class="logo-lg">
+                        </div>
+                        <h2 class="auth-title">Email Verification</h2>
+                        <p class="auth-subtitle">Almost there! Let's verify your email</p>
                     </div>
-                    <h2 class="card-title mb-4">Verify Your Email</h2>
-                    <p class="text-muted mb-4">
-                        Click the button below to send a verification email to your address.
-                        Please check your inbox and click the link in the email to verify your account.
-                    </p>
+
+                    <!-- Messages -->
                     {% if messages %}
                         {% for message in messages %}
-                            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                            <div class="alert alert-{{ message.tags }} alert-dismissible fade show modern-alert" role="alert">
+                                <i class="fas fa-{% if message.tags == 'success' %}check-circle{% elif message.tags == 'error' %}exclamation-triangle{% else %}info-circle{% endif %} me-2"></i>
                                 {{ message }}
                                 <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                             </div>
                         {% endfor %}
                     {% endif %}
-                    <div class="verification-actions mt-4">
-                        <a href="{% url 'resend_verification' %}" class="btn btn-primary me-2">
-                            <i class="fas fa-paper-plane"></i> Send Verification Email
+
+                    <!-- Verification Content -->
+                    <div class="verification-content">
+                        <div class="email-sent-animation">
+                            <div class="email-icon-wrapper">
+                                <i class="fas fa-envelope-open-text"></i>
+                                <div class="floating-checkmark">
+                                    <i class="fas fa-check"></i>
+                                </div>
+                            </div>
+                        </div>
+
+                        <h3 class="verification-title">Verify Your Email</h3>
+                        <p class="verification-description">
+                            Click the button below to send a verification email to your address. Please check your inbox and click the link in the email to verify your account.
+                        </p>
+
+                        <!-- Verification Steps -->
+                        <div class="verification-steps">
+                            <div class="step-item">
+                                <div class="step-icon">
+                                    <i class="fas fa-paper-plane"></i>
+                                </div>
+                                <div class="step-content">
+                                    <h4>Send Email</h4>
+                                    <p>Click to send verification email</p>
+                                </div>
+                            </div>
+                            
+                            <div class="step-divider"></div>
+                            
+                            <div class="step-item">
+                                <div class="step-icon">
+                                    <i class="fas fa-inbox"></i>
+                                </div>
+                                <div class="step-content">
+                                    <h4>Check Inbox</h4>
+                                    <p>Look for email from Smart-Buiz</p>
+                                </div>
+                            </div>
+                            
+                            <div class="step-divider"></div>
+                            
+                            <div class="step-item">
+                                <div class="step-icon verified">
+                                    <i class="fas fa-check-circle"></i>
+                                </div>
+                                <div class="step-content">
+                                    <h4>All Done!</h4>
+                                    <p>Your account will be verified</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Action Buttons -->
+                        <div class="verification-actions">
+                            <a href="{% url 'resend_verification' %}" class="btn btn-primary auth-btn">
+                                <i class="fas fa-paper-plane me-2"></i>Send Verification Email
                         </a>
-                        <a href="{% url 'home' %}" class="btn btn-outline-secondary">
-                            <i class="fas fa-home"></i> Back to Home
-                        </a>
+                            <a href="{% url 'BuisInt:buisint_dashboard' %}" class="btn btn-outline-secondary auth-btn-outline">
+                                <i class="fas fa-home me-2"></i>Back to Dashboard
+                            </a>
+                        </div>
+
+                        <!-- Help Text -->
+                        <div class="help-text">
+                            <p><strong>Need help?</strong></p>
+                            <ul>
+                                <li>Check your spam/junk folder for the email</li>
+                                <li>Make sure you entered the correct email address</li>
+                                <li>Contact support if you continue having issues</li>
+                            </ul>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -41,29 +112,292 @@
 
 {% block extra_css %}
 <style>
-.verification-icon {
+    .auth-container {
+        position: relative;
+        min-height: 100vh;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        overflow: hidden;
+    }
+
+    .auth-background {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1000"><defs><radialGradient id="a" cx="50%" cy="50%"><stop offset="0%" stop-color="%23ffffff" stop-opacity="0.1"/><stop offset="100%" stop-color="%23ffffff" stop-opacity="0"/></radialGradient></defs><circle cx="200" cy="200" r="100" fill="url(%23a)"/><circle cx="800" cy="300" r="150" fill="url(%23a)"/><circle cx="400" cy="700" r="120" fill="url(%23a)"/></svg>');
+    }
+
+    .auth-card {
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(20px);
+        border-radius: 20px;
+        padding: 2.5rem;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        position: relative;
+        z-index: 1;
+        animation: slideIn 0.6s ease-out;
+    }
+
+    .logo-lg {
+        width: 80px;
+        height: 80px;
+        filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.1));
+    }
+
+    .auth-title {
+        color: #2d3748;
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+        font-size: 2rem;
+    }
+
+    .auth-subtitle {
+        color: #718096;
+        margin-bottom: 0;
+        font-size: 1.1rem;
+    }
+
+    .verification-content {
+        text-align: center;
+        margin-top: 2rem;
+    }
+
+    .email-sent-animation {
+        margin: 2rem 0;
+    }
+
+    .email-icon-wrapper {
+        position: relative;
+        display: inline-block;
+        font-size: 4rem;
+        color: #667eea;
+        animation: pulse 2s infinite;
+    }
+
+    .floating-checkmark {
+        position: absolute;
+        top: -10px;
+        right: -10px;
+        background: #10b981;
+        color: white;
+        border-radius: 50%;
+        width: 30px;
+        height: 30px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1rem;
     animation: bounce 2s infinite;
 }
+
+    .verification-title {
+        color: #2d3748;
+        font-weight: 700;
+        margin-bottom: 1rem;
+        font-size: 1.5rem;
+    }
+
+    .verification-description {
+        color: #718096;
+        margin-bottom: 2rem;
+        font-size: 1.1rem;
+        line-height: 1.6;
+    }
+
+    .verification-steps {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin: 2rem 0;
+        padding: 1.5rem;
+        background: #f7fafc;
+        border-radius: 15px;
+        border: 2px solid #e2e8f0;
+    }
+
+    .step-item {
+        text-align: center;
+        flex: 1;
+    }
+
+    .step-icon {
+        width: 60px;
+        height: 60px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 1rem;
+        color: white;
+        font-size: 1.5rem;
+        transition: transform 0.3s ease;
+    }
+
+    .step-icon.verified {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    }
+
+    .step-icon:hover {
+        transform: scale(1.1);
+    }
+
+    .step-content h4 {
+        color: #2d3748;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+        font-size: 1rem;
+    }
+
+    .step-content p {
+        color: #718096;
+        font-size: 0.9rem;
+        margin: 0;
+    }
+
+    .step-divider {
+        width: 40px;
+        height: 2px;
+        background: linear-gradient(90deg, #667eea, #764ba2);
+        margin: 0 1rem;
+        border-radius: 2px;
+    }
+
+    .verification-actions {
+        display: flex;
+        gap: 1rem;
+        justify-content: center;
+        flex-wrap: wrap;
+        margin: 2rem 0;
+    }
+
+    .auth-btn {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border: none;
+        border-radius: 12px;
+        padding: 0.875rem 2rem;
+        font-weight: 600;
+        font-size: 1rem;
+        transition: all 0.3s ease;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: white;
+        text-decoration: none;
+    }
+
+    .auth-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 15px 35px rgba(102, 126, 234, 0.3);
+        background: linear-gradient(135deg, #5a67d8 0%, #6b46c1 100%);
+    }
+
+    .auth-btn-outline {
+        background: transparent;
+        border: 2px solid #667eea;
+        color: #667eea;
+        border-radius: 12px;
+        padding: 0.875rem 2rem;
+        font-weight: 600;
+        font-size: 1rem;
+        transition: all 0.3s ease;
+        text-decoration: none;
+    }
+
+    .auth-btn-outline:hover {
+        background: #667eea;
+        color: white;
+        transform: translateY(-2px);
+        box-shadow: 0 10px 25px rgba(102, 126, 234, 0.3);
+    }
+
+    .help-text {
+        background: #f7fafc;
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin-top: 2rem;
+        border: 2px solid #e2e8f0;
+        text-align: left;
+    }
+
+    .help-text p {
+        color: #2d3748;
+        font-weight: 600;
+        margin-bottom: 1rem;
+    }
+
+    .help-text ul {
+        color: #718096;
+        margin: 0;
+        padding-left: 1.5rem;
+    }
+
+    .help-text li {
+        margin-bottom: 0.5rem;
+    }
+
+    .modern-alert {
+        border-radius: 12px;
+        border: none;
+        backdrop-filter: blur(10px);
+        font-weight: 500;
+        margin-bottom: 2rem;
+    }
+
+    @keyframes slideIn {
+        from {
+            opacity: 0;
+            transform: translateY(30px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    @keyframes pulse {
+        0%, 100% {
+            transform: scale(1);
+        }
+        50% {
+            transform: scale(1.05);
+        }
+    }
 
 @keyframes bounce {
     0%, 20%, 50%, 80%, 100% {
         transform: translateY(0);
     }
     40% {
-        transform: translateY(-20px);
+            transform: translateY(-10px);
     }
     60% {
-        transform: translateY(-10px);
+            transform: translateY(-5px);
     }
 }
 
-.btn {
-    transition: all 0.3s ease;
+    @media (max-width: 768px) {
+        .verification-steps {
+            flex-direction: column;
+            gap: 1rem;
 }
 
-.btn:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        .step-divider {
+            width: 2px;
+            height: 30px;
+            margin: 0.5rem 0;
+        }
+
+        .verification-actions {
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .auth-btn, .auth-btn-outline {
+            width: 100%;
+            max-width: 250px;
+        }
 }
 </style>
 {% endblock %} 
