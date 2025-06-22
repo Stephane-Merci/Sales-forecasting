@@ -11,6 +11,9 @@ https://docs.djangoproject.com/en/5.0/ref/settings/
 """
 
 from pathlib import Path
+import os
+from decouple import config
+import dj_database_url
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -20,12 +23,12 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-vfj4tj49j&y+y&!6ma^-)54!dyfbsw6q$b*^fcsi7yzr)rg%iy'
+SECRET_KEY = config('SECRET_KEY', default='django-insecure-vfj4tj49j&y+y&!6ma^-)54!dyfbsw6q$b*^fcsi7yzr)rg%iy')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = config('DEBUG', default=True, cast=bool)
 
-ALLOWED_HOSTS = ['127.0.0.1', 'localhost', '0.0.0.0', 'testserver']
+ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='127.0.0.1,localhost,0.0.0.0,testserver', cast=lambda v: [s.strip() for s in v.split(',')])
 
 
 # Application definition
@@ -47,6 +50,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',  # For serving static files
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -79,27 +83,53 @@ WSGI_APPLICATION = 'core.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.0/ref/settings/#databases
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
-    }
+# Default SQLite database for development
+default_db_config = {
+    'ENGINE': 'django.db.backends.sqlite3',
+    'NAME': BASE_DIR / 'db.sqlite3',
 }
 
+# Use PostgreSQL in production if DATABASE_URL is provided
+DATABASE_URL = config('DATABASE_URL', default=None)
+if DATABASE_URL:
+    DATABASES = {
+        'default': dj_database_url.parse(DATABASE_URL, conn_max_age=600)
+    }
+else:
+    DATABASES = {
+        'default': default_db_config
+    }
+
 # MongoDB Configuration
+MONGODB_HOST = config('MONGODB_HOST', default='localhost')
+MONGODB_PORT = config('MONGODB_PORT', default=27017, cast=int)
+MONGODB_DB = config('MONGODB_DB', default='sales_forecasting')
+MONGODB_USERNAME = config('MONGODB_USERNAME', default='')
+MONGODB_PASSWORD = config('MONGODB_PASSWORD', default='')
+
 MONGODB_SETTINGS = {
-    'db': 'sales_forecasting',
-    'host': 'localhost',
-    'port': 27017,
+    'db': MONGODB_DB,
+    'host': MONGODB_HOST,
+    'port': MONGODB_PORT,
 }
+
+# Add authentication if provided
+if MONGODB_USERNAME and MONGODB_PASSWORD:
+    MONGODB_SETTINGS.update({
+        'username': MONGODB_USERNAME,
+        'password': MONGODB_PASSWORD,
+        'authentication_source': 'admin'
+    })
+
 import mongoengine
-mongoengine.connect(
-    alias='default',
-    db='sales_forecasting',
-    host='localhost',
-    port=27017,
-    name='sales_forecasting'
-) 
+try:
+    mongoengine.connect(
+        alias='default',
+        **MONGODB_SETTINGS
+    )
+except Exception as e:
+    print(f"MongoDB connection failed: {e}")
+
 # Password validation
 # https://docs.djangoproject.com/en/5.0/ref/settings/#auth-password-validators
 
@@ -132,14 +162,17 @@ USE_TZ = True
 
 
 # Static files (CSS, JavaScript, Images)
-STATIC_URL = 'static/'
+STATIC_URL = '/static/'
 STATICFILES_DIRS = [
     BASE_DIR / 'static'
 ]
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 
+# WhiteNoise configuration for serving static files
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+
 # Media files
-MEDIA_URL = 'media/'
+MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
 # Default primary key field type
@@ -167,18 +200,69 @@ SIMPLE_JWT = {
 }
 
 # Email settings
-EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = 'smtp.gmail.com'
-EMAIL_PORT = 587
-EMAIL_USE_TLS = True
-EMAIL_HOST_USER = 'merci.noupouwo@gmail.com'
-EMAIL_HOST_PASSWORD = 'xels nesm tplg jdux'
-DEFAULT_FROM_EMAIL = 'merci.noupouwo@gmail.com'
-SERVER_EMAIL = 'merci.noupouwo@gmail.com'
+EMAIL_BACKEND = config('EMAIL_BACKEND', default='django.core.mail.backends.smtp.EmailBackend')
+EMAIL_HOST = config('EMAIL_HOST', default='smtp.gmail.com')
+EMAIL_PORT = config('EMAIL_PORT', default=587, cast=int)
+EMAIL_USE_TLS = config('EMAIL_USE_TLS', default=True, cast=bool)
+EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='merci.noupouwo@gmail.com')
+EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='xels nesm tplg jdux')
+DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='merci.noupouwo@gmail.com')
+SERVER_EMAIL = config('SERVER_EMAIL', default='merci.noupouwo@gmail.com')
 
 # Frontend URLs for email verification and password reset
-FRONTEND_URL = 'http://127.0.0.1:8000'  # Change this to your frontend URL
+FRONTEND_URL = config('FRONTEND_URL', default='http://127.0.0.1:8000')
 VERIFY_EMAIL_URL = f'{FRONTEND_URL}/verify-email'
 RESET_PASSWORD_URL = f'{FRONTEND_URL}/reset-password'
 
 SITE_ID = 1
+
+# Security settings for production
+if not DEBUG:
+    SECURE_BROWSER_XSS_FILTER = True
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_SECONDS = 31536000
+    SECURE_REDIRECT_EXEMPT = []
+    SECURE_SSL_REDIRECT = config('SECURE_SSL_REDIRECT', default=False, cast=bool)
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+
+# TensorFlow Optimization for deployment
+import os
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
+os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
+
+# Logging configuration
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {module} {process:d} {thread:d} {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'verbose',
+        },
+    },
+    'root': {
+        'handlers': ['console'],
+        'level': 'INFO',
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['console'],
+            'level': config('DJANGO_LOG_LEVEL', default='INFO'),
+            'propagate': False,
+        },
+        'forecasting': {
+            'handlers': ['console'],
+            'level': 'DEBUG',
+            'propagate': False,
+        },
+    },
+}
