@@ -224,9 +224,9 @@
 <body>
     <nav class="navbar navbar-expand-lg navbar-light">
         <div class="container">
-                                            <a class="navbar-brand" href="{% url 'BuisInt:buisint_dashboard' %}">
-                    <img src="{% static 'images/logo.svg' %}" alt="Smart-Buiz Logo" class="me-2" style="height: 32px;">
-                    <span class="fw-bold">Smart-Buiz</span>
+            <a class="navbar-brand" href="{% url 'home' %}">
+                <img src="{% static 'images/logo.svg' %}" alt="Smart-Buiz Logo" class="me-2" style="height: 32px;">
+                <span class="fw-bold">Smart-Buiz</span>
             </a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
@@ -234,6 +234,16 @@
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav ms-auto">
                     {% if user.is_authenticated %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'BuisInt:buisint_add_data' %}">
+                                <i class="fas fa-database me-1"></i>Manage Your Data
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'BuisInt:buisint_dashboard' %}">
+                                <i class="fas fa-chart-line me-1"></i>Dashboard
+                            </a>
+                        </li>
                         <li class="nav-item">
                             <a class="nav-link" href="{% url 'profile' %}">
                                 <i class="fas fa-user me-1"></i>Profile

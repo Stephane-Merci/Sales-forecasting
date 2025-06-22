@@ -204,10 +204,10 @@ EMAIL_BACKEND = config('EMAIL_BACKEND', default='django.core.mail.backends.smtp.
 EMAIL_HOST = config('EMAIL_HOST', default='smtp.gmail.com')
 EMAIL_PORT = config('EMAIL_PORT', default=587, cast=int)
 EMAIL_USE_TLS = config('EMAIL_USE_TLS', default=True, cast=bool)
-EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='merci.noupouwo@gmail.com')
-EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='xels nesm tplg jdux')
-DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='merci.noupouwo@gmail.com')
-SERVER_EMAIL = config('SERVER_EMAIL', default='merci.noupouwo@gmail.com')
+EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='smartbuiz.forecasting@gmail.com')
+EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='pfwa jzpz sbzb wbee')
+DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='smartbuiz.forecasting@gmail.com')
+SERVER_EMAIL = config('SERVER_EMAIL', default='smartbuiz.forecasting@gmail.com')
 
 # Frontend URLs for email verification and password reset
 FRONTEND_URL = config('FRONTEND_URL', default='http://127.0.0.1:8000')
