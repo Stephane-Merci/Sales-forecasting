@@ -240,7 +240,7 @@
     <!-- Visualization View -->
     <div id="visualization-view" class="view-content" style="display: none;">
         <div class="row mx-0 px-3">
-            <!-- Available Columns -->
+                <!-- Available Columns -->
             <div class="col-lg-2">
                 <div class="card mb-4">
                     <div class="card-header">
@@ -252,9 +252,9 @@
                         <div id="availableColumns" class="list-group">
                             <!-- Dynamic columns will be populated here -->
                         </div>
+                        </div>
                     </div>
                 </div>
-            </div>
 
             <!-- Chart Configuration Panel -->
             <div class="col-lg-2">
@@ -434,23 +434,23 @@
                 <div class="row">
                     <!-- Forecast Models List -->
                     <div class="col-md-4">
-                        <div class="card">
+                <div class="card">
                             <div class="card-header">
                                 <h5 class="card-title mb-0">
                                     <i class="fas fa-list me-2"></i>Forecast Models
                                 </h5>
                             </div>
-                            <div class="card-body">
+                    <div class="card-body">
                                 <div class="list-group" id="forecastModelsList">
                                     <div class="text-center text-muted py-4">
                                         <i class="fas fa-chart-line fa-3x mb-3"></i>
                                         <p>No forecast models yet</p>
                                         <small>Create your first forecast to get started</small>
-                                    </div>
-                                </div>
-                            </div>
                         </div>
                     </div>
+                </div>
+            </div>
+        </div>
 
                     <!-- Forecast Details -->
                     <div class="col-md-8">
@@ -564,20 +564,20 @@
                                     <small class="text-muted">(date/datetime columns only)</small>
                                 </label>
                                 <select class="form-control" name="dateColumn" required>
-                                    <option value="">Select date column</option>
-                                </select>
-                            </div>
+                            <option value="">Select date column</option>
+                        </select>
+                    </div>
                         </div>
                         <div class="col-md-6">
-                            <div class="mb-3">
+                    <div class="mb-3">
                                 <label class="form-label">
                                     <i class="fas fa-crosshairs me-2"></i>Target Column
                                     <small class="text-muted">(numeric columns only)</small>
                                 </label>
                                 <select class="form-control" name="targetColumn" required>
-                                    <option value="">Select target column</option>
-                                </select>
-                            </div>
+                            <option value="">Select target column</option>
+                        </select>
+                    </div>
                         </div>
                     </div>
 
@@ -598,7 +598,7 @@
                         <h6><i class="fas fa-sliders-h me-2"></i>LSTM Parameters</h6>
                         <div class="row">
                             <div class="col-md-6">
-                                <div class="mb-3">
+                    <div class="mb-3">
                                     <label class="form-label">Sequence Length</label>
                                     <input type="number" class="form-control" name="lstmSequenceLength" value="10" min="1">
                                 </div>
@@ -895,6 +895,11 @@
     let isFiltered = false;
     let currentFiltersForPagination = [];
 
+    // Global variables for forecast pagination
+    let forecastCurrentPage = 1;
+    let forecastTotalPages = 1;
+    let forecastPerPage = 5;
+
     // Initialize on page load
     document.addEventListener('DOMContentLoaded', function() {
         initializeEventListeners();
@@ -1101,9 +1106,13 @@
             if (viewName === 'visualization' && visualizationChart) {
                 visualizationChart.update();
             }
-            // If switching to forecast view, update the forecast chart
-            if (viewName === 'forecast' && forecastChart) {
+            // If switching to forecast view, load forecast models and update stats
+            if (viewName === 'forecast') {
+                loadForecastModels();
+                updateForecastStats();
+                if (forecastChart) {
                 forecastChart.update();
+                }
             }
         }
         
@@ -1141,6 +1150,10 @@
             
             if (data.status === 'success') {
                 currentData = data.data;
+                // Ensure column_types are available in currentData
+                if (!currentData.column_types && data.data.column_types) {
+                    currentData.column_types = data.data.column_types;
+                }
                 displayDataPreview(data.data);
                 setupColumns(data.data.columns, data.data.column_types);
                 showPanels();
@@ -1747,16 +1760,16 @@
 
         // Clear existing options (with null checks)
         if (columnsList) {
-            columnsList.innerHTML = '';
+        columnsList.innerHTML = '';
         }
         if (groupByColumn) {
-            groupByColumn.innerHTML = '<option value="">Select column...</option>';
+        groupByColumn.innerHTML = '<option value="">Select column...</option>';
         }
         if (dateColumn) {
-            dateColumn.innerHTML = '<option value="">Select date column</option>';
+        dateColumn.innerHTML = '<option value="">Select date column</option>';
         }
         if (targetColumn) {
-            targetColumn.innerHTML = '<option value="">Select target column</option>';
+        targetColumn.innerHTML = '<option value="">Select target column</option>';
         }
 
         // Store columns globally for other functions
@@ -1765,19 +1778,19 @@
         columns.forEach(column => {
             // Add to columns list
             if (columnsList) {
-                const columnDiv = document.createElement('div');
-                columnDiv.className = 'mb-2 p-2 border rounded';
-                columnDiv.innerHTML = `
-                    <strong>${column}</strong>
+            const columnDiv = document.createElement('div');
+            columnDiv.className = 'mb-2 p-2 border rounded';
+            columnDiv.innerHTML = `
+                <strong>${column}</strong>
                     <span class="badge bg-secondary ms-2" style="background: linear-gradient(135deg, #718096, #4a5568) !important;">${columnTypes[column]}</span>
-                `;
-                columnsList.appendChild(columnDiv);
+            `;
+            columnsList.appendChild(columnDiv);
             }
 
             // Add to dropdowns (with null checks)
             if (groupByColumn) {
-                const groupOption = new Option(column, column);
-                groupByColumn.appendChild(groupOption);
+            const groupOption = new Option(column, column);
+            groupByColumn.appendChild(groupOption);
             }
 
             // Add date columns to date dropdown
@@ -2157,7 +2170,7 @@
             showToast('Please upload data first', 'warning');
             return;
         }
-        
+
         // Switch to forecast tab
         switchView('forecast');
         
@@ -2165,45 +2178,97 @@
         loadForecastModels();
     }
     
-    // Load forecast models from server or local storage
-    function loadForecastModels() {        
-        // Update stats
-        updateForecastStats();
-        
-        // Check if there are any saved models
-        const savedModels = JSON.parse(localStorage.getItem('forecastModels') || '[]');
-        displayForecastModels(savedModels);
+    // Load forecast models from MongoDB
+    async function loadForecastModels(page = 1) {
+        try {
+            forecastCurrentPage = page;
+            
+            // Fetch forecasts from MongoDB with pagination
+            const response = await fetch(`/forecasting/api/user-forecasts/?page=${page}&limit=${forecastPerPage}`, {
+                method: 'GET',
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken')
+                }
+            });
+            
+            const result = await response.json();
+            
+            if (result.status === 'success') {
+                const forecasts = result.data;
+                const totalCount = result.total_count || forecasts.length;
+                forecastTotalPages = Math.ceil(totalCount / forecastPerPage);
+                
+                displayForecastModels(forecasts, totalCount);
+                displayForecastPagination();
+                
+                // Update stats with overall statistics
+                await updateForecastStats();
+            } else {
+                throw new Error(result.message || 'Failed to load forecasts');
+            }
+        } catch (error) {
+            console.error('Error loading forecasts:', error);
+            const modelsList = document.getElementById('forecastModelsList');
+            if (modelsList) {
+                modelsList.innerHTML = `
+                    <div class="text-center py-4">
+                        <i class="fas fa-exclamation-triangle text-warning mb-3" style="font-size: 3rem;"></i>
+                        <p class="text-muted">Error loading forecasts</p>
+                        <button class="btn btn-outline-primary" onclick="loadForecastModels()">
+                            <i class="fas fa-refresh me-2"></i>Retry
+                        </button>
+                    </div>
+                `;
+            }
+        }
     }
     
-    // Update forecast stats
-    function updateForecastStats() {
-        const savedModels = JSON.parse(localStorage.getItem('forecastModels') || '[]');
-        
-        const totalForecastsEl = document.getElementById('totalForecasts');
-        const activeModelsEl = document.getElementById('activeModels');
-        const bestModelEl = document.getElementById('bestModel');
-        const latestForecastEl = document.getElementById('latestForecast');
-        
-        if (totalForecastsEl) {
-            totalForecastsEl.textContent = savedModels.length;
-        }
-        if (activeModelsEl) {
-            activeModelsEl.textContent = savedModels.length;
-        }
-        
-        if (savedModels.length > 0) {
-            // Find the best model (first one for now)
-            if (bestModelEl) {
-                bestModelEl.textContent = savedModels[0].method;
+    // Update forecast stats from MongoDB
+    async function updateForecastStats() {
+        try {
+            const response = await fetch('/forecasting/api/user-statistics/', {
+                method: 'GET',
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken')
+                }
+            });
+            
+            const result = await response.json();
+            
+            if (result.status === 'success') {
+                const stats = result.data;
+                
+                const totalForecastsEl = document.getElementById('totalForecasts');
+                const activeModelsEl = document.getElementById('activeModels');
+                const bestModelEl = document.getElementById('bestModel');
+                const latestForecastEl = document.getElementById('latestForecast');
+                
+                if (totalForecastsEl) {
+                    totalForecastsEl.textContent = stats.total_forecasts;
+                }
+                if (activeModelsEl) {
+                    activeModelsEl.textContent = stats.total_forecasts;
+                }
+                
+                if (stats.best_model) {
+                    if (bestModelEl) {
+                        bestModelEl.textContent = `${stats.best_model.method.toUpperCase()} (R²: ${stats.best_model.r2.toFixed(3)})`;
+                    }
+                }
+                
+                if (stats.most_recent) {
+                    if (latestForecastEl) {
+                        latestForecastEl.textContent = new Date(stats.most_recent.created_at).toLocaleDateString();
+                    }
+                }
             }
-            if (latestForecastEl) {
-                latestForecastEl.textContent = new Date(savedModels[0].created_at).toLocaleDateString();
-            }
+        } catch (error) {
+            console.error('Error loading forecast statistics:', error);
         }
     }
     
         // Display forecast models in the list
-    function displayForecastModels(models) {
+    function displayForecastModels(models, totalCount) {
         const modelsList = document.getElementById('forecastModelsList');
         
         if (!modelsList) {
@@ -2220,14 +2285,21 @@
             `;
         } else {
             modelsList.innerHTML = models.map(model => `
-                <a href="#" class="list-group-item list-group-item-action" data-model-id="${model.id}">
-                    <div class="d-flex w-100 justify-content-between">
-                        <h6 class="mb-1">${model.name}</h6>
-                        <small class="badge bg-primary">${model.method.toUpperCase()}</small>
+                <div class="list-group-item list-group-item-action" data-model-id="${model.id}" style="cursor: pointer;">
+                    <div class="d-flex w-100 justify-content-between align-items-start">
+                        <div class="flex-grow-1" onclick="selectForecastModel('${model.id}', ${JSON.stringify(model).replace(/"/g, '&quot;')})">
+                            <h6 class="mb-1">${model.name}</h6>
+                            <p class="mb-1 text-muted small">Target: ${model.target_column}</p>
+                            <div class="d-flex align-items-center gap-2">
+                                <small class="text-muted">Created: ${new Date(model.created_at).toLocaleDateString()}</small>
+                                <span class="badge" style="background: linear-gradient(135deg, #667eea, #764ba2);">${model.method.toUpperCase()}</span>
+                            </div>
+                        </div>
+                        <button class="btn btn-sm btn-outline-danger ms-2" onclick="deleteForecast('${model.id}', event)" title="Delete forecast">
+                            <i class="fas fa-trash"></i>
+                        </button>
                     </div>
-                    <p class="mb-1 text-muted">${model.target_column}</p>
-                    <small class="text-muted">Created: ${new Date(model.created_at).toLocaleDateString()}</small>
-                </a>
+                </div>
             `).join('');
         }
     }
@@ -2309,24 +2381,53 @@
     }
 
     // Select forecast model from list
-    function selectForecastModel(modelId) {
-        const savedModels = JSON.parse(localStorage.getItem('forecastModels') || '[]');
-        const model = savedModels.find(m => m.id === modelId);
-        
-        if (model) {
-            // Update model details
-            updateModelDetails(model);
+    async function selectForecastModel(modelId, modelData = null) {
+        try {
+            let model = modelData;
             
-            // Update chart if forecast data exists
-            if (model.forecast_data) {
-                updateForecastChartDisplay(model.forecast_data);
+            // If model data not provided, fetch from server
+            if (!model) {
+                const response = await fetch(`/forecasting/api/forecast-details/${modelId}/`, {
+                    method: 'GET',
+                    headers: {
+                        'X-CSRFToken': getCookie('csrftoken')
+                    }
+                });
+                
+                const result = await response.json();
+                if (result.status === 'success') {
+                    model = result.data;
+                } else {
+                    throw new Error(result.message || 'Failed to load forecast details');
+                }
             }
             
-            // Highlight selected model
-            document.querySelectorAll('#forecastModelsList .list-group-item-action').forEach(item => {
-                item.classList.remove('active');
-            });
-            document.querySelector(`[data-model-id="${modelId}"]`).classList.add('active');
+            if (model) {
+                // Update model details
+                updateModelDetails(model);
+                
+                // Update chart if forecast data exists
+                if (model.forecast_data && model.forecast_dates) {
+                    updateForecastChartDisplay({
+                        forecast: model.forecast_data,
+                        dates: model.forecast_dates,
+                        metrics: model.metrics,
+                        confidence_intervals: model.confidence_intervals
+                    });
+                }
+                
+                // Highlight selected model
+                document.querySelectorAll('#forecastModelsList .list-group-item-action').forEach(item => {
+                    item.classList.remove('active');
+                });
+                const selectedItem = document.querySelector(`[data-model-id="${modelId}"]`);
+                if (selectedItem) {
+                    selectedItem.classList.add('active');
+                }
+            }
+        } catch (error) {
+            console.error('Error selecting forecast model:', error);
+            showToast('Error loading forecast details: ' + error.message, 'danger');
         }
     }
 
@@ -2341,9 +2442,10 @@
             parametersHtml += `<p><strong>Method:</strong> ${model.method.toUpperCase()}</p>`;
             parametersHtml += `<p><strong>Target Column:</strong> ${model.target_column}</p>`;
             parametersHtml += `<p><strong>Date Column:</strong> ${model.date_column}</p>`;
-            parametersHtml += `<p><strong>Forecast Period:</strong> ${model.period} days</p>`;
+            parametersHtml += `<p><strong>Forecast Period:</strong> ${model.forecast_period} days</p>`;
+            parametersHtml += `<p><strong>Created:</strong> ${new Date(model.created_at).toLocaleString()}</p>`;
             
-            if (model.parameters) {
+            if (model.parameters && Object.keys(model.parameters).length > 0) {
                 parametersHtml += `<p><strong>Parameters:</strong></p><ul>`;
                 Object.entries(model.parameters).forEach(([key, value]) => {
                     parametersHtml += `<li>${key}: ${value}</li>`;
@@ -2356,10 +2458,12 @@
         
         // Update metrics
         if (metricsDiv) {
-            if (model.metrics) {
+            if (model.metrics && Object.keys(model.metrics).length > 0) {
                 let metricsHtml = `<div class="text-start">`;
                 Object.entries(model.metrics).forEach(([key, value]) => {
-                    metricsHtml += `<p><strong>${key.toUpperCase()}:</strong> ${value.toFixed(4)}</p>`;
+                    if (value && typeof value === 'number') {
+                        metricsHtml += `<p><strong>${key.toUpperCase()}:</strong> ${value.toFixed(4)}</p>`;
+                    }
                 });
                 metricsHtml += `</div>`;
                 metricsDiv.innerHTML = metricsHtml;
@@ -2393,15 +2497,28 @@
             const dateColumnType = currentData.column_types[dateColumn];
             const targetColumnType = currentData.column_types[targetColumn];
             
+            console.log('Column validation:', {
+                dateColumn: dateColumn,
+                dateColumnType: dateColumnType,
+                targetColumn: targetColumn,
+                targetColumnType: targetColumnType,
+                availableColumnTypes: currentData.column_types
+            });
+            
             if (dateColumnType !== 'date' && dateColumnType !== 'datetime') {
-                showToast(`Selected date column '${dateColumn}' is not a date column (type: ${dateColumnType}). Please select a date column.`, 'warning');
+                showToast(`❌ Date Column Error: '${dateColumn}' is ${dateColumnType}, not a date column. Please select a date/datetime column.`, 'danger');
                 return;
             }
             
             if (targetColumnType !== 'numeric') {
-                showToast(`Selected target column '${targetColumn}' is not numeric (type: ${targetColumnType}). Please select a numeric column for forecasting.`, 'warning');
+                // Show sample values to help user understand
+                const sampleValues = currentData.data.slice(0, 3).map(row => row[targetColumn]);
+                showToast(`❌ Target Column Error: '${targetColumn}' contains ${targetColumnType} data (e.g., ${sampleValues.join(', ')}), not numeric values. Please select a column with numbers only.`, 'danger');
                 return;
             }
+        } else {
+            console.warn('Column types not available for validation');
+            showToast('⚠️ Warning: Unable to validate column types. Proceeding with forecast generation...', 'warning');
         }
 
         if (!currentData || !currentData.data || !currentData.data.length) {
@@ -2461,42 +2578,66 @@
         });
 
         try {
-            const response = await fetch('/forecasting/api/generate-forecast/', {
+            // Debug: Log the complete request for troubleshooting
+            console.log('🔍 Complete request data:', {
+                url: '/forecasting/api/generate-forecast/',
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'X-CSRFToken': getCookie('csrftoken')
                 },
+                dataStructure: {
+                    name: typeof requestData.name,
+                    date_column: typeof requestData.date_column,
+                    target_column: typeof requestData.target_column,
+                    method: typeof requestData.method,
+                    period: typeof requestData.period,
+                    parameters: typeof requestData.parameters,
+                    historical_data: typeof requestData.historical_data,
+                    data_length: requestData.historical_data?.length
+                }
+            });
+
+            const response = await fetch('/forecasting/api/generate-forecast/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken'),
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
                 body: JSON.stringify(requestData)
             });
 
-            const responseData = await response.json();
+            console.log('📡 Response status:', response.status);
+            console.log('📡 Response headers:', Object.fromEntries(response.headers.entries()));
 
             if (!response.ok) {
-                console.error('API Error Response:', responseData);
-                throw new Error(responseData.message || 'Failed to generate forecast');
+                const responseText = await response.text();
+                console.error('❌ Error Response Text:', responseText);
+                
+                let errorMessage = 'Failed to generate forecast';
+                try {
+                    const responseData = JSON.parse(responseText);
+                    console.error('❌ Parsed Error Response:', responseData);
+                    errorMessage = responseData.message || errorMessage;
+                } catch (e) {
+                    console.error('❌ Could not parse error response as JSON');
+                    // Extract useful info from HTML error pages
+                    if (responseText.includes('CSRF')) {
+                        errorMessage = 'CSRF token error. Please refresh the page and try again.';
+                    } else if (responseText.includes('DisallowedHost')) {
+                        errorMessage = 'Server configuration error. Please contact support.';
+                    } else if (responseText.includes('403')) {
+                        errorMessage = 'Authentication error. Please login again.';
+                    }
+                }
+                throw new Error(errorMessage);
             }
 
+            const responseData = await response.json();
+            console.log('✅ Success Response:', responseData);
+
             if (responseData.status === 'success') {
-                // Create model object for local storage
-                const newModel = {
-                    id: Date.now().toString(),
-                    name: modelName,
-                    method: forecastMethod,
-                    date_column: dateColumn,
-                    target_column: targetColumn,
-                    period: forecastPeriod,
-                    parameters: parameters,
-                    created_at: new Date().toISOString(),
-                    forecast_data: responseData.data,
-                    metrics: responseData.data.metrics || {}
-                };
-
-                // Save to local storage
-                const savedModels = JSON.parse(localStorage.getItem('forecastModels') || '[]');
-                savedModels.unshift(newModel); // Add to beginning
-                localStorage.setItem('forecastModels', JSON.stringify(savedModels));
-
                 // Close the modal
                 const newForecastModal = document.getElementById('newForecastModal');
                 const modal = bootstrap.Modal.getInstance(newForecastModal);
@@ -2504,13 +2645,18 @@
                     modal.hide();
                 }
 
+                // Switch to forecast view first
+                switchView('forecast');
+                
                 // Update the forecast view
                 loadForecastModels();
                 
-                // Auto-select the new model
-                setTimeout(() => {
-                    selectForecastModel(newModel.id);
-                }, 100);
+                // Auto-select the new model if we have the model_id
+                if (responseData.data.model_id) {
+                    setTimeout(() => {
+                        selectForecastModel(responseData.data.model_id);
+                    }, 500);
+                }
                 
                 showToast('Forecast generated successfully!', 'success');
             } else {
@@ -2527,11 +2673,40 @@
 
     // Update forecast chart display (for new UI)
     function updateForecastChartDisplay(data) {
+        console.log('updateForecastChartDisplay called with:', data);
+        
+        // Ensure we're on the forecast view
+        const forecastView = document.getElementById('forecast-view');
+        if (!forecastView || forecastView.style.display === 'none') {
+            console.log('Switching to forecast view for chart display');
+            switchView('forecast');
+            // Give a moment for the view to switch
+            setTimeout(() => {
+                updateForecastChartDisplay(data);
+            }, 100);
+            return;
+        }
+        
         const chartContainer = document.getElementById('forecastChartContainer');
         const canvas = document.getElementById('forecastChart');
         
+        if (!chartContainer) {
+            console.error('Chart container not found - may need to switch to forecast view');
+            showToast('Chart container not found', 'danger');
+            return;
+        }
+        
+        if (!canvas) {
+            console.error('Chart canvas not found - may need to switch to forecast view');
+            showToast('Chart canvas not found', 'danger');
+            return;
+        }
+        
         // Show chart, hide placeholder
-        chartContainer.querySelector('.text-center').style.display = 'none';
+        const placeholder = chartContainer.querySelector('.text-center');
+        if (placeholder) {
+            placeholder.style.display = 'none';
+        }
         canvas.style.display = 'block';
         
         // Update chart
@@ -2539,7 +2714,28 @@
     }
 
     function updateForecastChart(data) {
-        const ctx = document.getElementById('forecastChart').getContext('2d');
+        console.log('updateForecastChart called with:', data);
+        
+        const canvas = document.getElementById('forecastChart');
+        if (!canvas) {
+            console.error('Forecast chart canvas not found');
+            showToast('Chart canvas element not found', 'danger');
+            return;
+        }
+        
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+            console.error('Could not get 2D context from canvas');
+            showToast('Chart context error', 'danger');
+            return;
+        }
+        
+        // Check if Chart.js is loaded
+        if (typeof Chart === 'undefined') {
+            console.error('Chart.js library not loaded');
+            showToast('Chart.js library not available. Please refresh the page.', 'danger');
+            return;
+        }
         
         // Destroy existing chart if it exists
         if (forecastChart instanceof Chart) {
@@ -2549,24 +2745,57 @@
         // Extract data - handle different data formats
         let dates, forecasts, lowerBounds, upperBounds;
         
-        if (data.dates && data.forecast && data.confidence_intervals) {
-            // New format
+        console.log('Chart data received:', data);
+        
+        if (data.dates && data.forecast) {
+            // New format - handle both simple arrays and object arrays
             dates = data.dates;
-            forecasts = data.forecast.map(d => typeof d === 'object' ? d.forecast : d);
-            lowerBounds = data.confidence_intervals.lower;
-            upperBounds = data.confidence_intervals.upper;
-        } else if (data.forecast && Array.isArray(data.forecast)) {
-            // Alternative format
-            forecasts = data.forecast;
-            dates = forecasts.map((_, index) => `Day ${index + 1}`);
-            lowerBounds = forecasts.map(val => val * 0.95); // Dummy confidence intervals
-            upperBounds = forecasts.map(val => val * 1.05);
+            
+            if (Array.isArray(data.forecast)) {
+                // Handle array of numbers or objects
+                forecasts = data.forecast.map(d => {
+                    if (typeof d === 'object' && d.forecast !== undefined) {
+                        return d.forecast;
+                    } else if (typeof d === 'number') {
+                        return d;
+                    } else {
+                        return parseFloat(d) || 0;
+                    }
+                });
+            } else {
+                forecasts = [data.forecast];
+            }
+            
+            // Handle confidence intervals
+            if (data.confidence_intervals && data.confidence_intervals.lower && data.confidence_intervals.upper) {
+                lowerBounds = data.confidence_intervals.lower;
+                upperBounds = data.confidence_intervals.upper;
+            } else {
+                // Generate dummy confidence intervals
+                lowerBounds = forecasts.map(val => val * 0.95);
+                upperBounds = forecasts.map(val => val * 1.05);
+            }
         } else {
-            showToast('Invalid forecast data format', 'danger');
+            showToast('Invalid forecast data format - missing dates or forecast', 'danger');
+            console.error('Invalid data structure:', data);
             return;
         }
 
+        console.log('Creating chart with dates:', dates, 'forecasts:', forecasts);
+        
+        // Validate data arrays
+        if (!dates || !forecasts || dates.length === 0 || forecasts.length === 0) {
+            console.error('Invalid chart data: empty dates or forecasts');
+            showToast('No forecast data to display', 'warning');
+            return;
+        }
+        
+        if (dates.length !== forecasts.length) {
+            console.warn('Date and forecast arrays have different lengths:', dates.length, forecasts.length);
+        }
+
         // Create the chart
+        try {
         forecastChart = new Chart(ctx, {
             type: 'line',
             data: {
@@ -2575,23 +2804,23 @@
                     {
                         label: 'Forecast',
                         data: forecasts,
-                        borderColor: 'rgb(102, 126, 234)',
+                            borderColor: 'rgb(102, 126, 234)',
                         borderWidth: 2,
                         fill: false,
                         tension: 0.4
                     },
                     {
-                        label: 'Confidence Interval',
+                            label: 'Upper Bound',
                         data: upperBounds,
-                        borderColor: 'rgba(102, 126, 234, 0.2)',
-                        backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                            borderColor: 'rgba(102, 126, 234, 0.2)',
+                            backgroundColor: 'rgba(102, 126, 234, 0.1)',
                         fill: '+1',
                         tension: 0.4
                     },
                     {
                         label: 'Lower Bound',
                         data: lowerBounds,
-                        borderColor: 'rgba(102, 126, 234, 0.2)',
+                            borderColor: 'rgba(102, 126, 234, 0.2)',
                         fill: false,
                         tension: 0.4
                     }
@@ -2645,6 +2874,14 @@
                 }
             }
         });
+        
+        console.log('Chart created successfully');
+        
+        } catch (error) {
+            console.error('Error creating forecast chart:', error);
+            showToast('Error creating forecast chart: ' + error.message, 'danger');
+            return;
+        }
 
         // Switch to forecast view after generating forecast
         switchView('forecast');
@@ -2799,6 +3036,10 @@
             
             if (data.status === 'success') {
                 currentData = data.data;
+                // Ensure column_types are available in currentData
+                if (!currentData.column_types && data.data.column_types) {
+                    currentData.column_types = data.data.column_types;
+                }
                 displayDataPreview(data.data);
                 setupColumns(data.data.columns, data.data.column_types);
                 showPanels();
@@ -3004,8 +3245,8 @@
                 ev.currentTarget.classList.remove('drag-over');
             };
             
-                    const badgeColor = columnType === 'numeric' ? 'bg-success' :
-                           columnType === 'date' ? 'bg-info' : 'bg-secondary';
+            const badgeColor = columnType === 'numeric' ? 'bg-success' : 
+                              columnType === 'date' ? 'bg-info' : 'bg-secondary';
         const customBadgeStyle = columnType === 'numeric' ? 'background: linear-gradient(135deg, #10b981, #059669) !important;' :
                                 columnType === 'date' ? 'background: linear-gradient(135deg, #667eea, #764ba2) !important;' : 
                                 'background: linear-gradient(135deg, #718096, #4a5568) !important;';
@@ -3270,5 +3511,99 @@
 
     // Make currentData available globally for forecast functionality
     window.currentData = currentData;
+
+    // Display forecast pagination controls
+    function displayForecastPagination() {
+        const modelsList = document.getElementById('forecastModelsList');
+        if (!modelsList) return;
+        
+        // Only show pagination if there are multiple pages
+        if (forecastTotalPages <= 1) return;
+        
+        const paginationHtml = `
+            <div class="d-flex justify-content-between align-items-center mt-3 px-3 py-2 border-top">
+                <small class="text-muted">Page ${forecastCurrentPage} of ${forecastTotalPages}</small>
+                <div class="btn-group btn-group-sm" role="group">
+                    <button type="button" class="btn btn-outline-primary ${forecastCurrentPage === 1 ? 'disabled' : ''}" 
+                            onclick="loadForecastModels(1)" ${forecastCurrentPage === 1 ? 'disabled' : ''}>
+                        <i class="fas fa-angle-double-left"></i>
+                    </button>
+                    <button type="button" class="btn btn-outline-primary ${forecastCurrentPage === 1 ? 'disabled' : ''}" 
+                            onclick="loadForecastModels(${forecastCurrentPage - 1})" ${forecastCurrentPage === 1 ? 'disabled' : ''}>
+                        <i class="fas fa-chevron-left"></i>
+                    </button>
+                    <button type="button" class="btn btn-outline-primary ${forecastCurrentPage === forecastTotalPages ? 'disabled' : ''}" 
+                            onclick="loadForecastModels(${forecastCurrentPage + 1})" ${forecastCurrentPage === forecastTotalPages ? 'disabled' : ''}>
+                        <i class="fas fa-chevron-right"></i>
+                    </button>
+                    <button type="button" class="btn btn-outline-primary ${forecastCurrentPage === forecastTotalPages ? 'disabled' : ''}" 
+                            onclick="loadForecastModels(${forecastTotalPages})" ${forecastCurrentPage === forecastTotalPages ? 'disabled' : ''}>
+                        <i class="fas fa-angle-double-right"></i>
+                    </button>
+                </div>
+            </div>
+        `;
+        
+        modelsList.insertAdjacentHTML('beforeend', paginationHtml);
+    }
+
+    // Delete forecast function
+    async function deleteForecast(forecastId, event) {
+        // Prevent event bubbling to avoid selecting the model
+        if (event) {
+            event.stopPropagation();
+            event.preventDefault();
+        }
+        
+        // Confirm deletion
+        if (!confirm('Are you sure you want to delete this forecast? This action cannot be undone.')) {
+            return;
+        }
+        
+        try {
+            const response = await fetch(`/forecasting/api/delete-forecast/${forecastId}/`, {
+                method: 'DELETE',
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken')
+                }
+            });
+            
+            const result = await response.json();
+            
+            if (result.status === 'success') {
+                showToast('Forecast deleted successfully!', 'success');
+                
+                // Reload the forecast models list
+                loadForecastModels(forecastCurrentPage);
+                
+                // Clear forecast details if this was the selected model
+                const forecastChartContainer = document.getElementById('forecastChartContainer');
+                if (forecastChartContainer) {
+                    forecastChartContainer.innerHTML = `
+                        <div class="text-center text-muted">
+                            <i class="fas fa-chart-line fa-3x mb-3"></i>
+                            <h5>No Forecast Selected</h5>
+                            <p>Select a forecast model from the left panel to view details</p>
+                        </div>
+                    `;
+                }
+                
+                // Clear model parameters and metrics
+                const parametersDiv = document.getElementById('modelParameters');
+                const metricsDiv = document.getElementById('modelMetrics');
+                if (parametersDiv) {
+                    parametersDiv.innerHTML = '<p class="text-muted">Select a model to view details</p>';
+                }
+                if (metricsDiv) {
+                    metricsDiv.innerHTML = '<p class="text-muted">Select a model to view metrics</p>';
+                }
+            } else {
+                throw new Error(result.message || 'Failed to delete forecast');
+            }
+        } catch (error) {
+            console.error('Error deleting forecast:', error);
+            showToast('Error deleting forecast: ' + error.message, 'danger');
+        }
+    }
 </script>
 {% endblock %} 

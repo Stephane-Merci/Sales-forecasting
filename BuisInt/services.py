@@ -66,6 +66,7 @@ class DataProcessingService:
                 
                 # Check if column is numeric - be more strict about this
                 is_numeric = False
+                
                 try:
                     # Try to convert all non-null values to numeric
                     non_null_values = self.data[column].dropna()

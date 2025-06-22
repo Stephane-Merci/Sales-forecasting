@@ -106,14 +106,39 @@ class ForecastingService:
             
             # Ensure target column is numeric - be strict about this
             try:
-                # First check for non-numeric values
-                non_numeric_mask = pd.to_numeric(df[target_column], errors='coerce').isna()
-                if non_numeric_mask.any():
-                    non_numeric_values = df.loc[non_numeric_mask, target_column].unique()[:5]
-                    raise ValueError(f"Target column '{target_column}' contains non-numeric values: {list(non_numeric_values)}")
+                # Log original data types for debugging
+                logger.info(f"Target column '{target_column}' original dtype: {df[target_column].dtype}")
+                logger.info(f"Sample values: {df[target_column].head().tolist()}")
                 
-                df[target_column] = pd.to_numeric(df[target_column], errors='raise')
+                # First check for non-numeric values
+                original_values = df[target_column].copy()
+                numeric_converted = pd.to_numeric(df[target_column], errors='coerce')
+                non_numeric_mask = numeric_converted.isna()
+                
+                if non_numeric_mask.any():
+                    non_numeric_values = original_values.loc[non_numeric_mask].unique()[:5]
+                    logger.error(f"Found non-numeric values in target column '{target_column}': {list(non_numeric_values)}")
+                    
+                    # Try to clean the data by removing non-numeric rows
+                    logger.warning(f"Removing {non_numeric_mask.sum()} rows with non-numeric values")
+                    df = df[~non_numeric_mask].copy()
+                    
+                    if len(df) == 0:
+                        raise ValueError(f"All rows in target column '{target_column}' contain non-numeric values")
+                    
+                    # Re-convert after cleaning
+                    df[target_column] = pd.to_numeric(df[target_column], errors='coerce')
+                else:
+                    df[target_column] = numeric_converted
+                    
+                # Final check for successful conversion
+                if df[target_column].isna().all():
+                    raise ValueError(f"Could not convert any values in target column '{target_column}' to numeric")
+                    
+                logger.info(f"Successfully converted target column to numeric. Final dtype: {df[target_column].dtype}")
+                
             except Exception as e:
+                logger.error(f"Error in target column conversion: {str(e)}")
                 raise ValueError(f"Cannot convert target column '{target_column}' to numeric: {str(e)}")
             
             # Remove any rows with NaN values
@@ -148,17 +173,71 @@ class ForecastingService:
 
     def evaluate_model(self, y_true: np.ndarray, y_pred: np.ndarray) -> Dict[str, float]:
         """Calculate comprehensive model evaluation metrics"""
+        def safe_metric_calculation(func, *args, default_value=0.0):
+            """Safely calculate a metric, returning default if calculation fails"""
+            try:
+                result = func(*args)
+                if np.isnan(result) or np.isinf(result):
+                    logger.warning(f"Invalid metric value calculated: {result}, using default: {default_value}")
+                    return float(default_value)
+                return float(result)
+            except Exception as e:
+                logger.warning(f"Error calculating metric: {e}, using default: {default_value}")
+                return float(default_value)
+
+        # Ensure arrays are numpy arrays and have same length
+        y_true = np.array(y_true)
+        y_pred = np.array(y_pred)
+        
+        if len(y_true) != len(y_pred):
+            min_len = min(len(y_true), len(y_pred))
+            y_true = y_true[:min_len]
+            y_pred = y_pred[:min_len]
+            logger.warning(f"Array length mismatch, truncated to {min_len} elements")
+
+        # Calculate metrics with error handling
+        mse_val = safe_metric_calculation(mean_squared_error, y_true, y_pred)
+        rmse_val = safe_metric_calculation(np.sqrt, mse_val)
+        mae_val = safe_metric_calculation(mean_absolute_error, y_true, y_pred)
+        r2_val = safe_metric_calculation(r2_score, y_true, y_pred)
+        
+        # MAPE calculation with zero-division protection
+        def safe_mape():
+            with np.errstate(divide='ignore', invalid='ignore'):
+                mape = np.mean(np.abs((y_true - y_pred) / y_true)) * 100
+                return mape if np.isfinite(mape) else 0.0
+        
+        mape_val = safe_metric_calculation(safe_mape)
+        
+        # Additional metrics with safety checks
+        def safe_adjusted_r2():
+            n = len(y_true)
+            if n <= 2:  # Need at least 3 points for adjusted R²
+                return r2_val
+            return 1 - (1 - r2_val) * (n - 1) / (n - 2)
+        
+        def safe_variance_explained():
+            var_residual = np.var(y_true - y_pred) if len(y_true) > 1 else 0
+            var_true = np.var(y_true) if len(y_true) > 1 else 1
+            if var_true == 0:
+                return 1.0 if var_residual == 0 else 0.0
+            return 1 - var_residual / var_true
+
+        adjusted_r2_val = safe_metric_calculation(safe_adjusted_r2)
+        variance_explained_val = safe_metric_calculation(safe_variance_explained)
+
         metrics = {
-            'mse': mean_squared_error(y_true, y_pred),
-            'rmse': np.sqrt(mean_squared_error(y_true, y_pred)),
-            'mae': mean_absolute_error(y_true, y_pred),
-            'r2': r2_score(y_true, y_pred),
-            'mape': np.mean(np.abs((y_true - y_pred) / y_true)) * 100
+            'mse': mse_val,
+            'rmse': rmse_val,
+            'mae': mae_val,
+            'r2': r2_val,
+            'mape': mape_val,
+            'adjusted_r2': adjusted_r2_val,
+            'variance_explained': variance_explained_val
         }
         
-        # Add additional metrics
-        metrics['adjusted_r2'] = 1 - (1 - metrics['r2']) * (len(y_true) - 1) / (len(y_true) - 1 - 1)
-        metrics['variance_explained'] = 1 - np.var(y_true - y_pred) / np.var(y_true)
+        # Log metrics for debugging
+        logger.debug(f"Calculated metrics: {metrics}")
         
         return metrics
 
@@ -286,21 +365,11 @@ class ForecastingService:
                 'upper': forecasts + 1.96 * std
             }
 
-            # Format the results
-            forecast_data = [{
-                'date': date.strftime('%Y-%m-%d'),
-                'forecast': float(forecast),
-                'lower_bound': float(lower),
-                'upper_bound': float(upper)
-            } for date, forecast, lower, upper in zip(
-                future_dates,
-                forecasts.flatten(),
-                confidence_intervals['lower'].flatten(),
-                confidence_intervals['upper'].flatten()
-            )]
+            # Convert forecast to simple list of floats (like Prophet)
+            forecast_list = forecasts.flatten().tolist()
 
             return {
-                'forecast': forecast_data,
+                'forecast': forecast_list,  # Simple list of numbers
                 'dates': [d.strftime('%Y-%m-%d') for d in future_dates],
                 'metrics': metrics,
                 'confidence_intervals': {
@@ -356,16 +425,11 @@ class ForecastingService:
             y_pred = train_pred.predicted_mean
             metrics = self.evaluate_model(values, y_pred)
 
-            # Format the results
-            forecast_data = [{
-                'date': date.strftime('%Y-%m-%d'),
-                'forecast': float(forecast[i]),
-                'lower_bound': float(lower[i]),
-                'upper_bound': float(upper[i])
-            } for i, date in enumerate(future_dates)]
+            # Convert forecast to simple list of floats (like Prophet)
+            forecast_list = [float(forecast[i]) for i in range(len(forecast))]
 
             return {
-                'forecast': forecast_data,
+                'forecast': forecast_list,  # Simple list of numbers
                 'dates': [d.strftime('%Y-%m-%d') for d in future_dates],
                 'metrics': metrics,
                 'confidence_intervals': {
@@ -392,12 +456,23 @@ class ForecastingService:
             # Note: prepare_data standardizes column names to 'Date' and 'Value'
             prophet_df = df.rename(columns={'Date': 'ds', 'Value': 'y'})
 
-            # Add additional regressors if available
-            for col in df.columns:
-                if col not in ['Date', 'Value'] and np.issubdtype(df[col].dtype, np.number):
-                    prophet_df[col] = df[col]
+            # Additional validation for Prophet - ensure y column is strictly numeric
+            if not pd.api.types.is_numeric_dtype(prophet_df['y']):
+                logger.error(f"Prophet target column 'y' is not numeric. Dtype: {prophet_df['y'].dtype}")
+                raise ValueError(f"Prophet requires numeric target values, but got {prophet_df['y'].dtype}")
+            
+            # Check for any remaining non-finite values
+            if prophet_df['y'].isna().any() or np.isinf(prophet_df['y']).any():
+                logger.warning("Found NaN or infinite values in Prophet target column, cleaning...")
+                prophet_df = prophet_df.dropna(subset=['y'])
+                prophet_df = prophet_df[np.isfinite(prophet_df['y'])]
+                
+            if len(prophet_df) == 0:
+                raise ValueError("No valid numeric data remaining for Prophet forecasting")
+            
+            logger.info(f"Prophet data prepared successfully. Shape: {prophet_df.shape}, y column dtype: {prophet_df['y'].dtype}")
 
-            # Initialize and fit Prophet model with additional parameters
+            # Initialize Prophet model (without additional regressors for now to avoid issues)
             model = Prophet(
                 growth=parameters.get('growth', 'linear'),
                 seasonality_mode=parameters.get('seasonality_mode', 'additive'),
@@ -412,20 +487,15 @@ class ForecastingService:
             if parameters.get('add_holidays'):
                 model.add_country_holidays(country='US')  # Adjust country as needed
 
-            # Add additional regressors
-            for col in prophet_df.columns:
-                if col not in ['ds', 'y']:
-                    model.add_regressor(col)
+            # Note: Skipping additional regressors for now to avoid data type issues
+            # Future enhancement: Add proper validation for numeric regressors
 
             model.fit(prophet_df)
 
             # Create future dataframe
             future = model.make_future_dataframe(periods=forecast_period)
             
-            # Add regressor values to future dataframe if any
-            for col in prophet_df.columns:
-                if col not in ['ds', 'y']:
-                    future[col] = prophet_df[col].mean()  # Use mean for simplicity
+            # Note: No additional regressors to add for now
 
             # Generate forecast
             forecast = model.predict(future)
